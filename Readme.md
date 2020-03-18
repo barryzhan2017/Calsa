@@ -1,7 +1,25 @@
+### Development Management
+
+For Calsa, we could use [Visual Studio Code](https://code.visualstudio.com), [Merlin](https://github.com/ocaml/merlin), and [vscode-reasonml](https://github.com/reasonml-editor/vscode-reasonml) to provide modern IDE features for OCaml development, including auto completion, static analysis, and source browsing ("jump to the definition").
+
+To setup, please refer to [Setting up VS Code for OCaml development](https://www.cosmiccode.blog/blog/vscode-for-ocaml/) by Andrew Barnes for more help. We could ignore the VS Code configuration to simplify setup process.
+
+After setting up the development environement, please see the `.merlin` file under root directory, this is the file where we manage the source code path, compiled code path, and dependencies. Currently, we only have the following configuration:
+
+```
+S src
+B _build/src
+PKG llvm
+```
+
+which means Source code path: `src`, Built code path: `_build/src`, and our imported package `llvm`. Note that if we need to add more packages, the directive should probably be lower-case (e.g. Llvm should be written as llvm). Besides, we should install `ocamlfind` package to support the package management. For more help, please refer to [Merlin Project configuration](https://github.com/ocaml/merlin/wiki/project-configuration) for more information.
+
+Note that Merlin will work after we compiled the code, which means only after we built the compiler with the command given in next section, we could notice there will be no errors and no warnings, and it could support important features such as source browsing (e.g. we could see the definition of Ast and Sast in semant.ml) and type inference.
+
 ### Build the MicroC compiler
 
 ```
-ocamlbuild -pkgs llvm microc.native
+ocamlbuild -pkgs llvm src/microc.native
 ```
 
 ### Run the MicroC compiler and generate llvm code
