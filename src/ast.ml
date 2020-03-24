@@ -2,14 +2,18 @@
 
 type op = Add | Sub | Equal | Neq | Less | And | Or
 
-type typ = Int | Bool | StringArray of int
+type typ = Int | Bool | String | Array of typ * int
+
+type value  = Literal of int | BoolLit of bool | Id of string | Value_string of string
 
 type expr =
     Literal of int
   | BoolLit of bool
   | Id of string
+  | Value_string of string
   | Binop of expr * op * expr
   | Assign of string * expr
+  | ArrayAssign of string * value list
   (* function call *)
   | Call of string * expr list
 
@@ -45,14 +49,23 @@ let string_of_op = function
   | And -> "&&"
   | Or -> "||"
 
+let rec string_of_value (v : value) = match v with
+  | Literal(l) -> string_of_int l
+  | BoolLit(true) -> "true"
+  | BoolLit(false) -> "false"
+  | Id(s) -> s
+  | Value_string(s) -> s
+
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | Id(s) -> s
+  | Value_string(s) -> s
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | ArrayAssign(v, e) -> v ^ " = {" ^ (String.concat ", " (List.map string_of_value e)) ^ "}"
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
 
@@ -65,10 +78,11 @@ let rec string_of_stmt = function
                       string_of_stmt s1 ^ "else\n" ^ string_of_stmt s2
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
 
-let string_of_typ = function
+let rec string_of_typ = function
     Int -> "int"
   | Bool -> "bool"
-  | StringArray(len) -> "string[" ^ (string_of_int len) ^ "]"
+  | String -> "string"
+  | Array(t, len) -> (string_of_typ t) ^ "[" ^ (string_of_int len) ^ "]"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 

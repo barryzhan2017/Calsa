@@ -2,13 +2,17 @@
 
 open Ast
 
+type svalue  = SLiteral of int | SBoolLit of bool | SId of string | SString of string
+
 type sexpr = typ * sx
 and sx =
     SLiteral of int
   | SBoolLit of bool
   | SId of string
+  | SString of string
   | SBinop of sexpr * op * sexpr
   | SAssign of string * sexpr
+  | SArrayAssign of string * svalue list
   (* call *)
   | SCall of string * sexpr list
 
@@ -31,7 +35,12 @@ type sfunc_def = {
 
 type sprogram = bind list * sfunc_def list
 
-
+let rec string_of_svalue (v : svalue) = match v with
+  | SLiteral(l) -> string_of_int l
+  | SBoolLit(true) -> "true"
+  | SBoolLit(false) -> "false"
+  | SId(s) -> s
+  | SString(s) -> s
 
 (* Pretty-printing functions *)
 let rec string_of_sexpr (t, e) =
@@ -40,9 +49,11 @@ let rec string_of_sexpr (t, e) =
       | SBoolLit(true) -> "true"
       | SBoolLit(false) -> "false"
       | SId(s) -> s
+      | SString(s) -> s
       | SBinop(e1, o, e2) ->
         string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
       | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e
+      | SArrayAssign(v, e) -> v ^ " = {" ^ (String.concat ", " (List.map string_of_svalue e)) ^ "}"
       | SCall(f, el) ->
           f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
     ) ^ ")"

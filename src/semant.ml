@@ -79,12 +79,30 @@ let check (globals, functions) =
       try StringMap.find s symbols
       with Not_found -> raise (Failure ("undeclared identifier " ^ s))
     in
+    
+    let rec check_value (v : value) : typ * svalue = match v with
+        Literal l -> (Int, SLiteral l)
+      | BoolLit l -> (Bool, SBoolLit l)
+      | Id var -> (type_of_identifier var, SId var)
+      | Value_string s -> (String, SString s)
+    in
+
+    let rec check_values (v : value list) =
+      if (List.length v) == 1 then 
+        let (ty, v) = check_value (List.hd v) in (Array(ty, 1), [v])
+      else
+        let (ty1, v1) = check_value  (List.hd v)
+        and (Array(ty2, len), v2) = check_values (List.tl v) in
+        if ty1 = ty2 then (Array(ty1, len + 1), v1::v2)
+        else raise (Failure ("Inconsist Type"))
+    in
 
     (* Return a semantically-checked expression, i.e., with a type *)
     let rec check_expr = function
         Literal l -> (Int, SLiteral l)
       | BoolLit l -> (Bool, SBoolLit l)
       | Id var -> (type_of_identifier var, SId var)
+      | Value_string s -> (String, SString s)
       | Assign(var, e) as ex ->
         let lt = type_of_identifier var
         and (rt, e') = check_expr e in
@@ -92,6 +110,13 @@ let check (globals, functions) =
                   string_of_typ rt ^ " in " ^ string_of_expr ex
         in
         (check_assign lt rt err, SAssign(var, (rt, e')))
+      | ArrayAssign(var, e) as ex -> 
+        let lt = type_of_identifier var 
+        and (rt, vs) = check_values e in
+        let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
+                  string_of_typ rt ^ " in " ^ string_of_expr ex
+        in
+        (check_assign lt rt err, SArrayAssign(var, List.map snd (List.map check_value e)))
 
       | Binop(e1, op, e2) as e ->
         let (t1, e1') = check_expr e1
