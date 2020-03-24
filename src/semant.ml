@@ -33,6 +33,13 @@ let check (globals, functions) =
       formals = [(Int, "x")];
       locals = []; body = [] } StringMap.empty
   in
+  let built_in_decls =
+    StringMap.add "print" {
+      rtyp = String;
+      fname = "print";
+      formals = [(String, "x")];
+      locals = []; body = [] } built_in_decls
+  in
 
   (* Add function name to symbol table *)
   let add_func map fd =
@@ -79,21 +86,14 @@ let check (globals, functions) =
       try StringMap.find s symbols
       with Not_found -> raise (Failure ("undeclared identifier " ^ s))
     in
-    
-    let rec check_value (v : value) : typ * svalue = match v with
-        Literal l -> (Int, SLiteral l)
-      | BoolLit l -> (Bool, SBoolLit l)
-      | Id var -> (type_of_identifier var, SId var)
-      | Value_string s -> (String, SString s)
-    in
 
-    let rec check_values (v : value list) =
-      if (List.length v) == 1 then 
-        let (ty, v) = check_value (List.hd v) in (Array(ty, 1), [v])
+    let rec check_array_type v = 
+      let h = List.hd v in
+      if List.length v = 1 then (fst h, [h])
       else
-        let (ty1, v1) = check_value  (List.hd v)
-        and (Array(ty2, len), v2) = check_values (List.tl v) in
-        if ty1 = ty2 then (Array(ty1, len + 1), v1::v2)
+        let ty1 = fst h
+        and (ty2, es) = check_array_type (List.tl v) in
+        if ty1 = ty2 then (ty1, h::es)
         else raise (Failure ("Inconsist Type"))
     in
 
@@ -102,7 +102,7 @@ let check (globals, functions) =
         Literal l -> (Int, SLiteral l)
       | BoolLit l -> (Bool, SBoolLit l)
       | Id var -> (type_of_identifier var, SId var)
-      | Value_string s -> (String, SString s)
+      | VString s -> (String, SString s)
       | Assign(var, e) as ex ->
         let lt = type_of_identifier var
         and (rt, e') = check_expr e in
@@ -112,11 +112,12 @@ let check (globals, functions) =
         (check_assign lt rt err, SAssign(var, (rt, e')))
       | ArrayAssign(var, e) as ex -> 
         let lt = type_of_identifier var 
-        and (rt, vs) = check_values e in
+        and (rt, e') = check_array_type (List.map check_expr e) in
+        let rt' = Array(rt, List.length e') in
         let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
-                  string_of_typ rt ^ " in " ^ string_of_expr ex
+                  string_of_typ rt' ^ " in " ^ string_of_expr ex
         in
-        (check_assign lt rt err, SArrayAssign(var, List.map snd (List.map check_value e)))
+        (check_assign lt rt' err, SArrayAssign(var, e'))
 
       | Binop(e1, op, e2) as e ->
         let (t1, e1') = check_expr e1

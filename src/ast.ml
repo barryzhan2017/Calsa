@@ -4,16 +4,14 @@ type op = Add | Sub | Equal | Neq | Less | And | Or
 
 type typ = Int | Bool | String | Array of typ * int
 
-type value  = Literal of int | BoolLit of bool | Id of string | Value_string of string
-
 type expr =
     Literal of int
   | BoolLit of bool
   | Id of string
-  | Value_string of string
+  | VString of string
   | Binop of expr * op * expr
   | Assign of string * expr
-  | ArrayAssign of string * value list
+  | ArrayAssign of string * expr list
   (* function call *)
   | Call of string * expr list
 
@@ -49,23 +47,16 @@ let string_of_op = function
   | And -> "&&"
   | Or -> "||"
 
-let rec string_of_value (v : value) = match v with
-  | Literal(l) -> string_of_int l
-  | BoolLit(true) -> "true"
-  | BoolLit(false) -> "false"
-  | Id(s) -> s
-  | Value_string(s) -> s
-
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | Id(s) -> s
-  | Value_string(s) -> s
+  | VString(s) -> s
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
-  | ArrayAssign(v, e) -> v ^ " = {" ^ (String.concat ", " (List.map string_of_value e)) ^ "}"
+  | ArrayAssign(v, e) -> v ^ " = {" ^ (String.concat ", " (List.map string_of_expr e)) ^ "}"
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
 

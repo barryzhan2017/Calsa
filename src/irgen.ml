@@ -104,8 +104,6 @@ let translate (globals, functions) =
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
       | SId s       -> L.build_load (lookup s) s builder
       | SString s -> L.const_string context s
-      | SArrayAssign (s, e) -> let e' = List.map (build_expr builder) e in
-      ignore(L.build_store e' (lookup s) builder); e'
       | SAssign (s, e) -> let e' = build_expr builder e in
         ignore(L.build_store e' (lookup s) builder); e'
       | SBinop (e1, op, e2) ->
