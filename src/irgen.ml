@@ -84,8 +84,9 @@ let translate (globals, functions) =
       (* Allocate space for any locally declared variables and add the
        * resulting registers to our map *)
       and add_local m (t, n) =
-        let local_var = L.build_alloca (ltype_of_typ t) n builder
-        in StringMap.add n local_var m
+        let ty = ltype_of_typ t in
+          let local_var = L.build_alloca ty n builder
+          in StringMap.add n local_var m
       in
 
       let formals = List.fold_left2 add_formal StringMap.empty fdecl.sformals
@@ -103,8 +104,10 @@ let translate (globals, functions) =
         SLiteral i  -> L.const_int i32_t i
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
       | SId s       -> L.build_load (lookup s) s builder
-      | SString s -> L.const_string context s
+      | SString s -> L.build_global_stringptr s "" builder
       | SAssign (s, e) -> let e' = build_expr builder e in
+        ignore(L.build_store e' (lookup s) builder); e'
+      | SArrayAssign (s, e) -> let e' = L.const_array (ltype_of_typ (fst (List.hd e))) (Array.of_list (List.map (build_expr builder) e)) in
         ignore(L.build_store e' (lookup s) builder); e'
       | SBinop (e1, op, e2) ->
         let e1' = build_expr builder e1
