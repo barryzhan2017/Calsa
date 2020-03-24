@@ -89,7 +89,7 @@ expr:
     LITERAL          { Literal($1)            }
   | BLIT             { BoolLit($1)            }
   | ID               { Id($1)                 }
-  | VALUE_STRING     { VString(String.sub $1 1 ((String.length $1) - 2)) }
+  | VALUE_STRING     { StringLit(String.sub $1 1 ((String.length $1) - 2)) }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
   | expr EQ     expr { Binop($1, Equal, $3)   }

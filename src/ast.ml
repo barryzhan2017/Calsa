@@ -8,7 +8,7 @@ type expr =
     Literal of int
   | BoolLit of bool
   | Id of string
-  | VString of string
+  | StringLit of string
   | Binop of expr * op * expr
   | Assign of string * expr
   | ArrayAssign of string * expr list
@@ -52,7 +52,7 @@ let rec string_of_expr = function
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | Id(s) -> s
-  | VString(s) -> s
+  | StringLit(s) -> s
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e

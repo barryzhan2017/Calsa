@@ -7,7 +7,7 @@ and sx =
     SLiteral of int
   | SBoolLit of bool
   | SId of string
-  | SString of string
+  | SStringLit of string
   | SBinop of sexpr * op * sexpr
   | SAssign of string * sexpr
   | SArrayAssign of string * sexpr list
@@ -40,7 +40,7 @@ let rec string_of_sexpr (t, e) =
       | SBoolLit(true) -> "true"
       | SBoolLit(false) -> "false"
       | SId(s) -> s
-      | SString(s) -> s
+      | SStringLit(s) -> s
       | SBinop(e1, o, e2) ->
         string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
       | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e

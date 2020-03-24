@@ -102,7 +102,7 @@ let check (globals, functions) =
         Literal l -> (Int, SLiteral l)
       | BoolLit l -> (Bool, SBoolLit l)
       | Id var -> (type_of_identifier var, SId var)
-      | VString s -> (String, SString s)
+      | StringLit s -> (String, SStringLit s)
       | Assign(var, e) as ex ->
         let lt = type_of_identifier var
         and (rt, e') = check_expr e in
