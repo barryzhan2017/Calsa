@@ -29,12 +29,16 @@ let translate (globals, functions) =
   (* Get types from the context *)
   let i32_t      = L.i32_type    context
   and i8_t       = L.i8_type     context
-  and i1_t       = L.i1_type     context in
+  and i1_t       = L.i1_type     context 
+  and string_t      = L.pointer_type (L.i8_type context)
+  in
 
   (* Return the LLVM type for a MicroC type *)
-  let ltype_of_typ = function
+  let rec ltype_of_typ = function
       A.Int   -> i32_t
     | A.Bool  -> i1_t
+    | A.String -> string_t
+    | A.Array(t, len) -> L.array_type (ltype_of_typ t) len
   in
 
   (* Create a map of global variables after creating each *)
@@ -94,12 +98,14 @@ let translate (globals, functions) =
     let lookup n = try StringMap.find n local_vars
       with Not_found -> StringMap.find n global_vars
     in
-
     (* Construct code for an expression; return its value *)
     let rec build_expr builder ((_, e) : sexpr) = match e with
         SLiteral i  -> L.const_int i32_t i
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
       | SId s       -> L.build_load (lookup s) s builder
+      | SString s -> L.const_string context s
+      | SArrayAssign (s, e) -> let e' = List.map (build_expr builder) e in
+      ignore(L.build_store e' (lookup s) builder); e'
       | SAssign (s, e) -> let e' = build_expr builder e in
         ignore(L.build_store e' (lookup s) builder); e'
       | SBinop (e1, op, e2) ->
