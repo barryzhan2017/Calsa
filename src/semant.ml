@@ -33,13 +33,6 @@ let check (globals, functions) =
       formals = [(Int, "x")];
       locals = []; body = [] } StringMap.empty
   in
-  let built_in_decls =
-    StringMap.add "print" {
-      rtyp = String;
-      fname = "print";
-      formals = [(String, "x")];
-      locals = []; body = [] } built_in_decls
-  in
 
   (* Add function name to symbol table *)
   let add_func map fd =
@@ -101,24 +94,27 @@ let check (globals, functions) =
     let rec check_expr = function
         Literal l -> (Int, SLiteral l)
       | BoolLit l -> (Bool, SBoolLit l)
+      | ArrayLit l -> 
+        let (ty, e) = check_array_type (List.map check_expr l) in
+        (Array(ty, List.length e), SArrayLit e)
       | Id var -> (type_of_identifier var, SId var)
+      | ArrayAccess(var, idx) -> 
+        (
+        let ty = type_of_identifier var in
+        match ty with
+          Array(ty', len) ->
+            if idx >= 0 && idx < len then (ty', SArrayAccess(var, idx))
+            else raise (Failure ("Invalid index"))
+        | _ -> raise (Failure ("Inconsist Type"))
+        )
       | StringLit s -> (String, SStringLit s)
       | Assign(var, e) as ex ->
         let lt = type_of_identifier var
-        and (rt, e') = check_expr e in
-        let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
-                  string_of_typ rt ^ " in " ^ string_of_expr ex
-        in
-        (check_assign lt rt err, SAssign(var, (rt, e')))
-      | ArrayAssign(var, e) as ex -> 
-        let lt = type_of_identifier var 
-        and (rt, e') = check_array_type (List.map check_expr e) in
-        let rt' = Array(rt, List.length e') in
-        let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
-                  string_of_typ rt' ^ " in " ^ string_of_expr ex
-        in
-        (check_assign lt rt' err, SArrayAssign(var, e'))
-
+          and (rt, e') = check_expr e in
+          let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
+                    string_of_typ rt ^ " in " ^ string_of_expr ex
+          in
+          (check_assign lt rt err, SAssign(var, (rt, e')))
       | Binop(e1, op, e2) as e ->
         let (t1, e1') = check_expr e1
         and (t2, e2') = check_expr e2 in

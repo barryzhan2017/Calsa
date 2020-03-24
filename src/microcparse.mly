@@ -89,7 +89,9 @@ expr:
     LITERAL          { Literal($1)            }
   | BLIT             { BoolLit($1)            }
   | ID               { Id($1)                 }
+  | ID LBRACKET LITERAL RBRACKET { ArrayAccess($1, $3) }
   | VALUE_STRING     { StringLit(String.sub $1 1 ((String.length $1) - 2)) }
+  | LBRACE args_opt RBRACE { ArrayLit($2) }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
   | expr EQ     expr { Binop($1, Equal, $3)   }
@@ -98,7 +100,6 @@ expr:
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
   | ID ASSIGN expr   { Assign($1, $3)         }
-  | ID ASSIGN LBRACE args_opt RBRACE {ArrayAssign($1, $4)}
   | LPAREN expr RPAREN { $2                   }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }

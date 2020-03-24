@@ -6,11 +6,12 @@ type sexpr = typ * sx
 and sx =
     SLiteral of int
   | SBoolLit of bool
+  | SArrayLit of sexpr list
   | SId of string
+  | SArrayAccess of string * int
   | SStringLit of string
   | SBinop of sexpr * op * sexpr
   | SAssign of string * sexpr
-  | SArrayAssign of string * sexpr list
   (* call *)
   | SCall of string * sexpr list
 
@@ -39,12 +40,13 @@ let rec string_of_sexpr (t, e) =
         SLiteral(l) -> string_of_int l
       | SBoolLit(true) -> "true"
       | SBoolLit(false) -> "false"
+      | SArrayLit(l) -> "{" ^ (String.concat ", " (List.map string_of_sexpr l)) ^ "}"
       | SId(s) -> s
+      | SArrayAccess(var, idx) -> var ^ "[" ^ (string_of_int idx) ^ "]"
       | SStringLit(s) -> s
       | SBinop(e1, o, e2) ->
         string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
       | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e
-      | SArrayAssign(v, e) -> v ^ " = {" ^ (String.concat ", " (List.map string_of_sexpr e)) ^ "}"
       | SCall(f, el) ->
           f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
     ) ^ ")"

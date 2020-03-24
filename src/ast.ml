@@ -8,10 +8,11 @@ type expr =
     Literal of int
   | BoolLit of bool
   | Id of string
+  | ArrayLit of expr list
+  | ArrayAccess of string * int
   | StringLit of string
   | Binop of expr * op * expr
   | Assign of string * expr
-  | ArrayAssign of string * expr list
   (* function call *)
   | Call of string * expr list
 
@@ -51,12 +52,13 @@ let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
+  | ArrayLit(l) -> "{" ^ (String.concat ", " (List.map string_of_expr l)) ^ "}"
   | Id(s) -> s
+  | ArrayAccess(var, idx) -> var ^ "[" ^ (string_of_int idx) ^ "]"
   | StringLit(s) -> s
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
-  | ArrayAssign(v, e) -> v ^ " = {" ^ (String.concat ", " (List.map string_of_expr e)) ^ "}"
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
 
