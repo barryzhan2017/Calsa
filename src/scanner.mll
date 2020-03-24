@@ -10,6 +10,8 @@ rule token = parse
 | "/*"     { comment lexbuf }           (* Comments *)
 | '('      { LPAREN }
 | ')'      { RPAREN }
+| '['      { LBRACKET }
+| ']'      { RBRACKET }
 | '{'      { LBRACE }
 | '}'      { RBRACE }
 | ';'      { SEMI }
@@ -30,6 +32,7 @@ rule token = parse
 | "return" { RETURN }
 | "int"    { INT }
 | "bool"   { BOOL }
+| "string"   { STRING }
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
 | digit+ as lem  { LITERAL(int_of_string lem) }

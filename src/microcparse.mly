@@ -4,9 +4,9 @@
 open Ast
 %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE PLUS MINUS ASSIGN
+%token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE PLUS MINUS ASSIGN
 %token EQ NEQ LT AND OR
-%token IF ELSE WHILE INT BOOL
+%token IF ELSE WHILE INT BOOL STRING
 /* return, COMMA token */
 %token RETURN COMMA
 %token <int> LITERAL
@@ -41,11 +41,12 @@ vdecl_list:
 
 /* int x */
 vdecl:
-  typ ID { ($1, $2) }
+    typ ID { ($1, $2) }
 
 typ:
     INT   { Int   }
   | BOOL  { Bool  }
+  | STRING LBRACKET LITERAL RBRACKET  { StringArray ($3) }
 
 /* fdecl */
 fdecl:
