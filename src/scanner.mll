@@ -17,6 +17,8 @@ rule token = parse
 | ','      { COMMA }
 | '+'      { PLUS }
 | '-'      { MINUS }
+| '*'      { MULTIPLY }
+| '/'      { DIVIDE }
 | '%'      { MODULO }
 | '='      { ASSIGN }
 | "=="     { EQ }
