@@ -1,6 +1,6 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type op = Add | Sub | Equal | Neq | Less | And | Or
+type op = Add | Sub | Mod | Equal | Neq | Less | And | Or
 
 type typ = Int | Bool
 
@@ -39,6 +39,7 @@ type program = bind list * func_def list
 let string_of_op = function
     Add -> "+"
   | Sub -> "-"
+  | Mod -> "%"
   | Equal -> "=="
   | Neq -> "!="
   | Less -> "<"
