@@ -1,6 +1,6 @@
 int main() {
-  string x;
-  x = "aaa";
-  print(x);
+  string[5] x;
+  x = {"aa","bb","cc","dd","ee"};
+  prints(x[2]);
   return 0;
 }
