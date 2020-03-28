@@ -1,5 +1,6 @@
 int main() {
-  int[5] x;
-  x = {1,2,3,4,5};
+  string s;
+  s = "34";
+  print_s(s);
   return 0;
 }

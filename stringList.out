@@ -2,33 +2,15 @@
 source_filename = "MicroC"
 
 @fmt = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@0 = private unnamed_addr constant [3 x i8] c"34\00", align 1
 
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
-  %x = alloca [5 x i32]
-  %malloccall = tail call i8* @malloc(i32 mul (i32 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i32), i32 5))
-  %tmp = bitcast i8* %malloccall to i32*
-  %tmp2 = getelementptr i32, i32* %tmp, i32 0
-  store i32 1, i32* %tmp2
-  %tmp21 = getelementptr i32, i32* %tmp, i32 1
-  store i32 2, i32* %tmp21
-  %tmp22 = getelementptr i32, i32* %tmp, i32 2
-  store i32 3, i32* %tmp22
-  %tmp23 = getelementptr i32, i32* %tmp, i32 3
-  store i32 4, i32* %tmp23
-  %tmp24 = getelementptr i32, i32* %tmp, i32 4
-  store i32 5, i32* %tmp24
-  %malloccall5 = tail call i8* @malloc(i32 ptrtoint ({ i32, i32* }* getelementptr ({ i32, i32* }, { i32, i32* }* null, i32 1) to i32))
-  %arr_literal = bitcast i8* %malloccall5 to { i32, i32* }*
-  %first = getelementptr inbounds { i32, i32* }, { i32, i32* }* %arr_literal, i32 0, i32 0
-  %second = getelementptr inbounds { i32, i32* }, { i32, i32* }* %arr_literal, i32 0, i32 1
-  store i32 5, i32* %first
-  store i32* %tmp, i32** %second
-  %actual_arr_literal = load { i32, i32* }, { i32, i32* }* %arr_literal
-  store { i32, i32* } %actual_arr_literal, [5 x i32]* %x
+  %s = alloca i8*
+  store i8* getelementptr inbounds ([3 x i8], [3 x i8]* @0, i32 0, i32 0), i8** %s
+  %s1 = load i8*, i8** %s
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @fmt, i32 0, i32 0), i8* %s1)
   ret i32 0
 }
-
-declare noalias i8* @malloc(i32)
