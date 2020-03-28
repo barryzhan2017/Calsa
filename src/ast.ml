@@ -55,7 +55,7 @@ let rec string_of_expr = function
   | ArrayLit(l) -> "{" ^ (String.concat ", " (List.map string_of_expr l)) ^ "}"
   | Id(s) -> s
   | ArrayAccess(var, idx) -> var ^ "[" ^ (string_of_int idx) ^ "]"
-  | StringLit(s) -> s
+  | StringLit(s) -> "\"" ^ s ^ "\""
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
