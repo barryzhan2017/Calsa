@@ -26,13 +26,14 @@ let check (globals, functions) =
   check_binds "global" globals;
 
   (* Collect function declarations for built-in functions: no bodies *)
-  let built_in_decls =
-    StringMap.add "print" {
-      rtyp = Int;
-      fname = "print";
-      formals = [(Int, "x")];
-      locals = []; body = [] } StringMap.empty
-  in
+  let built_in_decls = 
+    let add_bind map (function_name, param_type, return_type) = StringMap.add function_name {
+      rtyp = return_type;
+      fname = function_name;
+      formals = [(param_type, "x")];
+      locals = []; body = [] } map
+    in List.fold_left add_bind StringMap.empty [("print", Int, Int);
+                                                ("prints", String, Int)] in
 
   (* Add function name to symbol table *)
   let add_func map fd =
