@@ -1,6 +1,6 @@
 int main() {
-  string s;
-  s = "34";
-  print_s(s);
+  string x;
+  x = "aaa";
+  print(x);
   return 0;
 }

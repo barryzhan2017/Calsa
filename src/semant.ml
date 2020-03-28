@@ -29,8 +29,8 @@ let check (globals, functions) =
   let built_in_decls =
     StringMap.add "print_i" {
       rtyp = Int;
-      fname = "print_i";
-      formals = [(Int, "x")];
+      fname = "print";
+      formals = [(String, "x")];
       locals = []; body = [] } StringMap.empty
   in
   let built_in_decls =

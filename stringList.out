@@ -1,16 +1,16 @@
 ; ModuleID = 'MicroC'
 source_filename = "MicroC"
 
-@fmt = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
-@0 = private unnamed_addr constant [3 x i8] c"34\00", align 1
+@fmt = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@0 = private unnamed_addr constant [4 x i8] c"aaa\00", align 1
 
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
-  %s = alloca i8*
-  store i8* getelementptr inbounds ([3 x i8], [3 x i8]* @0, i32 0, i32 0), i8** %s
-  %s1 = load i8*, i8** %s
-  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @fmt, i32 0, i32 0), i8* %s1)
+  %x = alloca i8*
+  store i8* getelementptr inbounds ([4 x i8], [4 x i8]* @0, i32 0, i32 0), i8** %x
+  %x1 = load i8*, i8** %x
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @fmt, i32 0, i32 0), i8* %x1)
   ret i32 0
 }
