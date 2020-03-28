@@ -1,5 +1,6 @@
 int main() {
-  int[5] x;
-  x = {1,2,3,4,5};
+  string x;
+  x = "aaa";
+  print(x);
   return 0;
 }

@@ -30,7 +30,7 @@ let check (globals, functions) =
     StringMap.add "print" {
       rtyp = Int;
       fname = "print";
-      formals = [(Int, "x")];
+      formals = [(String, "x")];
       locals = []; body = [] } StringMap.empty
   in
 
