@@ -115,6 +115,22 @@ let check (globals, functions) =
                     string_of_typ rt ^ " in " ^ string_of_expr ex
           in
           (check_assign lt rt err, SAssign(var, (rt, e')))
+      | ArrayAssign(var, i, e) as ex ->
+        (
+          let lt = type_of_identifier var in
+          match lt with
+              Array (t, len) -> (
+                let (rt, e') = check_expr e in
+                if len > i then
+                  let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
+                          string_of_typ rt ^ " in " ^ string_of_expr ex
+                  in
+                  (check_assign t rt err, SArrayAssign(var, i, (rt, e')))
+                else
+                  raise (Failure ("Index out of range "))
+              )
+            | _ -> raise (Failure ("Unexpected Type"))
+        )
       | Binop(e1, op, e2) as e ->
         let (t1, e1') = check_expr e1
         and (t2, e2') = check_expr e2 in

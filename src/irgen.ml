@@ -117,7 +117,9 @@ let translate (globals, functions) =
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
       | SArrayLit a -> let (ty, sx) = (List.hd a) in
         L.const_array (ltype_of_typ ty) (Array.of_list (List.map (build_expr builder) a))
-      | SArrayAccess (v, i) -> L.build_extractvalue (L.build_load (lookup v) v builder) i "" builder
+      | SArrayAccess (s, i) -> (*L.build_extractvalue (L.build_load (lookup v) v builder) i "" builder*)
+        let ptr = L.build_struct_gep (lookup s) i "addr" builder in
+        L.build_load ptr s builder
 
       | SId s       -> L.build_load (lookup s) s builder
 
@@ -126,8 +128,10 @@ let translate (globals, functions) =
       | SAssign (s, e) -> let e' = build_expr builder e in
         ignore(L.build_store e' (lookup s) builder); e'
 
-      (*| SArrayAssign (s, e) -> let e' = L.const_array (ltype_of_typ (fst (List.hd e))) (Array.of_list (List.map (build_expr builder) e)) in
-        ignore(L.build_store e' (lookup s) builder); e'*)
+      | SArrayAssign (s, i, e) -> 
+        let e' = build_expr builder e
+        and ptr = L.build_struct_gep (lookup s) i "addr" builder in
+        ignore(L.build_store e' ptr builder); e'
       | SBinop (e1, op, e2) ->
         let e1' = build_expr builder e1
         and e2' = build_expr builder e2 in
