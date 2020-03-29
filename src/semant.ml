@@ -32,8 +32,7 @@ let check (globals, functions) =
       fname = function_name;
       formals = [(param_type, "x")];
       locals = []; body = [] } map
-    in List.fold_left add_bind StringMap.empty [("print", Int, Int);
-                                                ("prints", String, Int)] in
+    in List.fold_left add_bind StringMap.empty [("print", Any, Int)] in
 
   (* Add function name to symbol table *)
   let add_func map fd =
@@ -67,7 +66,7 @@ let check (globals, functions) =
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+      if lvaluet = rvaluet || lvaluet = Any then rvaluet else raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)

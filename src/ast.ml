@@ -2,7 +2,7 @@
 
 type op = Add | Sub | Equal | Neq | Less | And | Or
 
-type typ = Int | Bool | String | Array of typ * int
+type typ = Int | Bool | String | Array of typ * int | Any
 
 type expr =
     Literal of int
@@ -76,6 +76,7 @@ let rec string_of_typ = function
   | Bool -> "bool"
   | String -> "string"
   | Array(t, len) -> (string_of_typ t) ^ "[" ^ (string_of_int len) ^ "]"
+  | Any -> "any"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 

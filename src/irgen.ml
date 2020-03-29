@@ -38,6 +38,7 @@ let translate (globals, functions) =
     | A.Bool  -> i1_t
     | A.String -> string_t
     | A.Array(t, len) -> L.array_type (ltype_of_typ t) len
+    | A.Any -> raise (Failure ("Not implemented yet!"))
   in
 
   (* Create a map of global variables after creating each *)
@@ -67,11 +68,20 @@ let translate (globals, functions) =
   let build_function_body fdecl =
     let (the_function, _) = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
+  (* Create c style print format *)
+    let rec format_type = function
+        A.Int   -> "%d"
+      | A.Bool  -> "%d"
+      | A.String -> "%s"
+      | A.Any -> raise (Failure ("Not implemented yet!"))
+      | A.Array(t, len) -> 
+          let format =  Array.make len (format_type t) in 
+            let result = Array.fold_left (fun a b -> a ^ b ^ ", ") "[" format in
+              (String.sub result 0 (String.length result - 2)) ^ "]" in
+      
 
-    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder 
-    and string_format_str = L.build_global_stringptr "%s\n" "fmt" builder in
+    let format_str t = L.build_global_stringptr ((format_type t) ^ "\n") "fmt" builder in
     
-
     (* Construct the function's "locals": formal arguments and locally
        declared variables.  Allocate each on the stack, initialize their
        value, if appropriate, and remember their values in the "locals" map *)
@@ -130,11 +140,8 @@ let translate (globals, functions) =
          | A.Neq     -> L.build_icmp L.Icmp.Ne
          | A.Less    -> L.build_icmp L.Icmp.Slt
         ) e1' e2' "tmp" builder
-      | SCall ("print", [e]) ->
-        L.build_call printf_func [| int_format_str; (build_expr builder e) |]
-          "printf" builder
-      | SCall ("prints", [e]) ->
-        L.build_call printf_func [| string_format_str; (build_expr builder e) |]
+      | SCall ("print", [(t, e)]) ->
+        L.build_call printf_func [| format_str t; (build_expr builder (t, e)) |]
           "printf" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
