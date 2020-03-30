@@ -4,14 +4,16 @@
 open Ast
 %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE PLUS MINUS MULTIPLY DIVIDE MODULO ASSIGN
+
+%token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE PLUS MINUS MULTIPLY DIVIDE MODULO ASSIGN QUOTATION
+
 %token EQ NEQ LT AND OR
-%token IF ELSE WHILE INT BOOL
+%token IF ELSE WHILE INT BOOL STRING
 /* return, COMMA token */
 %token RETURN COMMA
 %token <int> LITERAL
 %token <bool> BLIT
-%token <string> ID
+%token <string> ID VALUE_STRING
 %token EOF
 
 %start program
@@ -42,11 +44,13 @@ vdecl_list:
 
 /* int x */
 vdecl:
-  typ ID { ($1, $2) }
+    typ ID { ($1, $2) }
 
 typ:
     INT   { Int   }
   | BOOL  { Bool  }
+  | STRING {String}
+  | typ LBRACKET LITERAL RBRACKET  { Array ($1, $3) }
 
 /* fdecl */
 fdecl:
@@ -88,6 +92,9 @@ expr:
     LITERAL          { Literal($1)            }
   | BLIT             { BoolLit($1)            }
   | ID               { Id($1)                 }
+  | ID LBRACKET LITERAL RBRACKET { ArrayAccess($1, $3) }
+  | VALUE_STRING     { StringLit(String.sub $1 1 ((String.length $1) - 2)) }
+  | LBRACE args_opt RBRACE { ArrayLit($2) }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
   | expr MULTIPLY expr { Binop($1, Mul, $3)   }
@@ -99,6 +106,7 @@ expr:
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
   | ID ASSIGN expr   { Assign($1, $3)         }
+  | ID LBRACKET LITERAL RBRACKET ASSIGN expr   { ArrayAssign($1, $3, $6) }
   | LPAREN expr RPAREN { $2                   }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }

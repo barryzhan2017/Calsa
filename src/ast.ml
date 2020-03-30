@@ -1,15 +1,19 @@
-(* Abstract Syntax Tree and functions for printing it *)
+ (* Abstract Syntax Tree and functions for printing it *)
 
 type op = Add | Sub | Mul | Div | Mod | Equal | Neq | Less | And | Or
 
-type typ = Int | Bool
+type typ = Int | Bool | String | Array of typ * int | Any
 
 type expr =
     Literal of int
   | BoolLit of bool
   | Id of string
+  | ArrayLit of expr list
+  | ArrayAccess of string * int
+  | StringLit of string
   | Binop of expr * op * expr
   | Assign of string * expr
+  | ArrayAssign of string * int * expr
   (* function call *)
   | Call of string * expr list
 
@@ -52,10 +56,14 @@ let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
+  | ArrayLit(l) -> "{" ^ (String.concat ", " (List.map string_of_expr l)) ^ "}"
   | Id(s) -> s
+  | ArrayAccess(var, idx) -> var ^ "[" ^ (string_of_int idx) ^ "]"
+  | StringLit(s) -> "\"" ^ s ^ "\""
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | ArrayAssign(v, i, e) -> v ^ "[" ^ (string_of_int i) ^ "]" ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
 
@@ -68,9 +76,12 @@ let rec string_of_stmt = function
                       string_of_stmt s1 ^ "else\n" ^ string_of_stmt s2
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
 
-let string_of_typ = function
+let rec string_of_typ = function
     Int -> "int"
   | Bool -> "bool"
+  | String -> "string"
+  | Array(t, len) -> (string_of_typ t) ^ "[" ^ (string_of_int len) ^ "]"
+  | Any -> "any"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 

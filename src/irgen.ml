@@ -28,13 +28,17 @@ let translate (globals, functions) =
 
   (* Get types from the context *)
   let i32_t      = L.i32_type    context
-  and i8_t       = L.i8_type     context
-  and i1_t       = L.i1_type     context in
+  and i1_t       = L.i1_type     context 
+  and string_t   = L.pointer_type (L.i8_type context)
+  in
 
   (* Return the LLVM type for a MicroC type *)
-  let ltype_of_typ = function
+  let rec ltype_of_typ = function
       A.Int   -> i32_t
     | A.Bool  -> i1_t
+    | A.String -> string_t
+    | A.Array(t, len) -> L.array_type (ltype_of_typ t) len
+    | A.Any -> raise (Failure ("Not implemented yet!"))
   in
 
   (* Create a map of global variables after creating each *)
@@ -45,7 +49,7 @@ let translate (globals, functions) =
     List.fold_left global_var StringMap.empty globals in
 
   let printf_t : L.lltype =
-    L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
+    L.var_arg_function_type i32_t [| string_t |] in
   let printf_func : L.llvalue =
     L.declare_function "printf" printf_t the_module in
 
@@ -64,9 +68,20 @@ let translate (globals, functions) =
   let build_function_body fdecl =
     let (the_function, _) = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
+  (* Create c style print format *)
+    let rec format_type = function
+        A.Int   -> "%d"
+      | A.Bool  -> "%d"
+      | A.String -> "%s"
+      | A.Any -> raise (Failure ("Not implemented yet!"))
+      | A.Array(t, len) -> 
+          let format =  Array.make len (format_type t) in 
+            let result = Array.fold_left (fun a b -> a ^ b ^ ", ") "[" format in
+              (String.sub result 0 (String.length result - 2)) ^ "]" in
+      
 
-    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder in
-
+    let format_str t = L.build_global_stringptr ((format_type t) ^ "\n") "fmt" builder in
+    
     (* Construct the function's "locals": formal arguments and locally
        declared variables.  Allocate each on the stack, initialize their
        value, if appropriate, and remember their values in the "locals" map *)
@@ -80,8 +95,9 @@ let translate (globals, functions) =
       (* Allocate space for any locally declared variables and add the
        * resulting registers to our map *)
       and add_local m (t, n) =
-        let local_var = L.build_alloca (ltype_of_typ t) n builder
-        in StringMap.add n local_var m
+        let ty = ltype_of_typ t in
+          let local_var = L.build_alloca ty n builder
+          in StringMap.add n local_var m
       in
 
       let formals = List.fold_left2 add_formal StringMap.empty fdecl.sformals
@@ -99,9 +115,23 @@ let translate (globals, functions) =
     let rec build_expr builder ((_, e) : sexpr) = match e with
         SLiteral i  -> L.const_int i32_t i
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
+      | SArrayLit a -> let (ty, sx) = (List.hd a) in
+        L.const_array (ltype_of_typ ty) (Array.of_list (List.map (build_expr builder) a))
+      | SArrayAccess (s, i) -> (*L.build_extractvalue (L.build_load (lookup v) v builder) i "" builder*)
+        let ptr = L.build_struct_gep (lookup s) i "addr" builder in
+        L.build_load ptr s builder
+
       | SId s       -> L.build_load (lookup s) s builder
+
+      | SStringLit s -> L.build_global_stringptr s "" builder
+
       | SAssign (s, e) -> let e' = build_expr builder e in
         ignore(L.build_store e' (lookup s) builder); e'
+
+      | SArrayAssign (s, i, e) -> 
+        let e' = build_expr builder e
+        and ptr = L.build_struct_gep (lookup s) i "addr" builder in
+        ignore(L.build_store e' ptr builder); e'
       | SBinop (e1, op, e2) ->
         let e1' = build_expr builder e1
         and e2' = build_expr builder e2 in
@@ -117,8 +147,8 @@ let translate (globals, functions) =
          | A.Neq     -> L.build_icmp L.Icmp.Ne
          | A.Less    -> L.build_icmp L.Icmp.Slt
         ) e1' e2' "tmp" builder
-      | SCall ("print", [e]) ->
-        L.build_call printf_func [| int_format_str ; (build_expr builder e) |]
+      | SCall ("print", [(t, e)]) ->
+        L.build_call printf_func [| format_str t; (build_expr builder (t, e)) |]
           "printf" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in

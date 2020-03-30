@@ -26,13 +26,13 @@ let check (globals, functions) =
   check_binds "global" globals;
 
   (* Collect function declarations for built-in functions: no bodies *)
-  let built_in_decls =
-    StringMap.add "print" {
-      rtyp = Int;
-      fname = "print";
-      formals = [(Int, "x")];
-      locals = []; body = [] } StringMap.empty
-  in
+  let built_in_decls = 
+    let add_bind map (function_name, param_type, return_type) = StringMap.add function_name {
+      rtyp = return_type;
+      fname = function_name;
+      formals = [(param_type, "x")];
+      locals = []; body = [] } map
+    in List.fold_left add_bind StringMap.empty [("print", Any, Int)] in
 
   (* Add function name to symbol table *)
   let add_func map fd =
@@ -66,7 +66,7 @@ let check (globals, functions) =
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+      if lvaluet = rvaluet || lvaluet = Any then rvaluet else raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
@@ -80,19 +80,57 @@ let check (globals, functions) =
       with Not_found -> raise (Failure ("undeclared identifier " ^ s))
     in
 
+    let rec check_array_type v = 
+      let h = List.hd v in
+      if List.length v = 1 then (fst h, [h])
+      else
+        let ty1 = fst h
+        and (ty2, es) = check_array_type (List.tl v) in
+        if ty1 = ty2 then (ty1, h::es)
+        else raise (Failure ("Inconsist Type"))
+    in
+
     (* Return a semantically-checked expression, i.e., with a type *)
     let rec check_expr = function
         Literal l -> (Int, SLiteral l)
       | BoolLit l -> (Bool, SBoolLit l)
+      | ArrayLit l -> 
+        let (ty, e) = check_array_type (List.map check_expr l) in
+        (Array(ty, List.length e), SArrayLit e)
       | Id var -> (type_of_identifier var, SId var)
+      | ArrayAccess(var, idx) -> 
+        (
+        let ty = type_of_identifier var in
+        match ty with
+          Array(ty', len) ->
+            if idx >= 0 && idx < len then (ty', SArrayAccess(var, idx))
+            else raise (Failure ("Invalid index"))
+        | _ -> raise (Failure ("Inconsist Type"))
+        )
+      | StringLit s -> (String, SStringLit s)
       | Assign(var, e) as ex ->
         let lt = type_of_identifier var
-        and (rt, e') = check_expr e in
-        let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
-                  string_of_typ rt ^ " in " ^ string_of_expr ex
-        in
-        (check_assign lt rt err, SAssign(var, (rt, e')))
-
+          and (rt, e') = check_expr e in
+          let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
+                    string_of_typ rt ^ " in " ^ string_of_expr ex
+          in
+          (check_assign lt rt err, SAssign(var, (rt, e')))
+      | ArrayAssign(var, i, e) as ex ->
+        (
+          let lt = type_of_identifier var in
+          match lt with
+              Array (t, len) -> (
+                let (rt, e') = check_expr e in
+                if len > i then
+                  let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
+                          string_of_typ rt ^ " in " ^ string_of_expr ex
+                  in
+                  (check_assign t rt err, SArrayAssign(var, i, (rt, e')))
+                else
+                  raise (Failure ("Index out of range "))
+              )
+            | _ -> raise (Failure ("Unexpected Type"))
+        )
       | Binop(e1, op, e2) as e ->
         let (t1, e1') = check_expr e1
         and (t2, e2') = check_expr e2 in
