@@ -2,7 +2,7 @@ int main() {
   string[5] x;
   int y;
   int[5] z;
-  x = ["aa","bb","cc","dd","ee"];
+  x = ["Sam Smith","1989","***** album","21 from Adele","@katyperry"];
   y = 1;
   z = [1,2,3,4,5];
   print(x);

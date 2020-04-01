@@ -3,10 +3,20 @@
 { open Microcparse }
 
 let digit = ['0'-'9']
-let letter = ['a'-'z' 'A'-'Z']
+let digits = digit+
+
+let lower_case = ['a'-'z'] 
+let upper_case = ['A'-'Z']
+let letter = lower_case | upper_case
+let letters = letter+
+
+let whitespace = [' ' '\t']+
+let newline = '\n' | '\r' | "\r\n"
+
+let id = letter (digit | letter | '_')*
 
 rule token = parse
-  [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
+  whitespace | newline { token lexbuf } (* Whitespace *)
 | "/*"     { comment lexbuf }           (* Comments *)
 | '('      { LPAREN }
 | ')'      { RPAREN }
@@ -15,7 +25,6 @@ rule token = parse
 | '{'      { LBRACE }
 | '}'      { RBRACE }
 | ';'      { SEMI }
-| '\"'     { QUOTATION }
 (* COMMA *)
 | ','      { COMMA }
 | '+'      { PLUS }
@@ -37,14 +46,19 @@ rule token = parse
 | "int"    { INT }
 | "bool"   { BOOL }
 | "string"   { STRING }
-| "true"   { BLIT(true)  }
-| "false"  { BLIT(false) }
-| digit+ as lem  { LITERAL(int_of_string lem) }
-| letter (digit | letter | '_')* as lem { ID(lem) }
-| "\"" (digit | letter)* "\"" as lem {VALUE_STRING(lem)}
+
+| "true"   { BOOLLIT(true) }
+| "false"  { BOOLLIT(false) }
+| digits as lem  { INTLIT(int_of_string lem) }
+| id as lem { ID(lem) }
+| '\"' { STRINGLIT ("\"" ^ (string (Buffer.create 128) lexbuf) ^ "\"") }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 
 and comment = parse
   "*/" { token lexbuf }
 | _    { comment lexbuf }
+
+and string buffer = parse
+  '\"' { Buffer.contents buffer }
+| newline | whitespace | [^ '"']+ as lem { Buffer.add_string buffer lem; string buffer lexbuf }

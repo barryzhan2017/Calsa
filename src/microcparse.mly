@@ -11,9 +11,9 @@ open Ast
 %token IF ELSE WHILE INT BOOL STRING
 /* return, COMMA token */
 %token RETURN COMMA
-%token <int> LITERAL
-%token <bool> BLIT
-%token <string> ID VALUE_STRING
+%token <int> INTLIT
+%token <bool> BOOLLIT
+%token <string> ID STRINGLIT
 %token EOF
 
 %start program
@@ -50,7 +50,7 @@ typ:
     INT   { Int   }
   | BOOL  { Bool  }
   | STRING {String}
-  | typ LBRACKET LITERAL RBRACKET  { Array ($1, $3) }
+  | typ LBRACKET INTLIT RBRACKET  { Array ($1, $3) }
 
 /* fdecl */
 fdecl:
@@ -89,11 +89,11 @@ stmt:
   | RETURN expr SEMI                        { Return $2      }
 
 expr:
-    LITERAL          { Literal($1)            }
-  | BLIT             { BoolLit($1)            }
+    INTLIT          { Literal($1)            }
+  | BOOLLIT             { BoolLit($1)            }
   | ID               { Id($1)                 }
-  | ID LBRACKET LITERAL RBRACKET { ArrayAccess($1, $3) }
-  | VALUE_STRING     { StringLit(String.sub $1 1 ((String.length $1) - 2)) }
+  | ID LBRACKET INTLIT RBRACKET { ArrayAccess($1, $3) }
+  | STRINGLIT     { StringLit(String.sub $1 1 ((String.length $1) - 2)) }
   | LBRACKET args_opt RBRACKET { ArrayLit($2) }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
@@ -106,7 +106,7 @@ expr:
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
   | ID ASSIGN expr   { Assign($1, $3)         }
-  | ID LBRACKET LITERAL RBRACKET ASSIGN expr   { ArrayAssign($1, $3, $6) }
+  | ID LBRACKET INTLIT RBRACKET ASSIGN expr   { ArrayAssign($1, $3, $6) }
   | LPAREN expr RPAREN { $2                   }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
