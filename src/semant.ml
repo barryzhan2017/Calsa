@@ -30,9 +30,9 @@ let check (globals, functions) =
     let add_bind map (function_name, param_type, return_type) = StringMap.add function_name {
       rtyp = return_type;
       fname = function_name;
-      formals = [(param_type, "x")];
+      formals = List.map (fun t -> (t, "x")) param_type;
       locals = []; body = [] } map
-    in List.fold_left add_bind StringMap.empty [("print", Any, Int)] in
+    in List.fold_left add_bind StringMap.empty [("print", [Any], Int); ("add", [List], Int)] in
 
   (* Add function name to symbol table *)
   let add_func map fd =

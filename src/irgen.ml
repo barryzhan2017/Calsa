@@ -32,12 +32,21 @@ let translate (globals, functions) =
   and string_t   = L.pointer_type (L.i8_type context)
   in
 
+    (* Declare struct StringList *)
+  
+  let struct_list_t : L.lltype =
+    L.named_struct_type context "List" in
+  let _ =
+    L.struct_set_body struct_list_t
+    [| string_t ; L.pointer_type struct_list_t |] false in
+
   (* Return the LLVM type for a MicroC type *)
   let rec ltype_of_typ = function
       A.Int   -> i32_t
     | A.Bool  -> i1_t
     | A.String -> string_t
     | A.Array(t, len) -> L.array_type (ltype_of_typ t) len
+    | A.List  -> struct_list_t
     | A.Any -> raise (Failure ("Not implemented yet!"))
   in
 
@@ -52,6 +61,11 @@ let translate (globals, functions) =
     L.var_arg_function_type i32_t [| string_t |] in
   let printf_func : L.llvalue =
     L.declare_function "printf" printf_t the_module in
+
+  (* Declare each C++ function *)
+  let add_t : L.lltype = L.function_type i32_t
+    [|struct_list_t|] in
+  let add_func : L.llvalue = L.declare_function "add" add_t the_module in
 
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
@@ -74,10 +88,12 @@ let translate (globals, functions) =
       | A.Bool  -> "%d"
       | A.String -> "%s"
       | A.Any -> raise (Failure ("Not implemented yet!"))
+      | A.List -> raise (Failure ("Not implemented yet!")) 
       | A.Array(t, len) -> 
           let format =  Array.make len (format_type t) in 
             let result = Array.fold_left (fun a b -> a ^ b ^ ", ") "[" format in
               (String.sub result 0 (String.length result - 2)) ^ "]" in
+      
       
 
     let format_str t = L.build_global_stringptr ((format_type t) ^ "\n") "fmt" builder in
@@ -150,6 +166,9 @@ let translate (globals, functions) =
       | SCall ("print", [(t, e)]) ->
         L.build_call printf_func [| format_str t; (build_expr builder (t, e)) |]
           "printf" builder
+      | SCall ("add", [(t1, e1)]) ->
+        L.build_call add_func [| (build_expr builder (t1, e1))|]
+          "add" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
         let llargs = List.rev (List.map (build_expr builder) (List.rev args)) in

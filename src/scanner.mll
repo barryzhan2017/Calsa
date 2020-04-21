@@ -46,7 +46,7 @@ rule token = parse
 | "int"    { INT }
 | "bool"   { BOOL }
 | "string"   { STRING }
-
+| "List"   { LIST }
 | "true"   { BOOLLIT(true) }
 | "false"  { BOOLLIT(false) }
 | digits as lem  { INTLIT(int_of_string lem) }
