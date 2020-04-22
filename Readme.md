@@ -47,3 +47,20 @@ lli example.out
 - `microc.ml`: top-level file to test and run microc compiler
 - `example.mc`: a sample microc source code
 - `example.out`: a sample compiled code of example.mc
+
+### Tips in linking c code into LLVM IR code
+ 
+- `xxx.c and xxx.h` write down your c files in src folder
+- `Makefile`: add your .c and .h file for object file and library file creation
+- `microc.ml`: add your library by specifying -lxxx in command of gcc.
+- `irgen.ml`: add the declaration of functions and add Call of your functions in build expression. If you define a any type, define it, too
+- `semant.ml`: check your function declaration here
+- `scanner.ml, microcparse.mly, ast.ml`: define your custom type here
+
+Run 
+```
+make
+```
+to compile .c and .h files to a .a file and build our complier files into a microc.native file. Then follow the step in "Run the MicroC compiler and generate llvm code" to use linked compiler for example code.
+
+
