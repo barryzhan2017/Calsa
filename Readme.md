@@ -63,4 +63,10 @@ make
 ```
 to compile .c and .h files to a .a file and build our complier files into a microc.native file. Then follow the step in "Run the MicroC compiler and generate llvm code" to use linked compiler for example code.
 
+Run
+```
+make clean 
+```
+to clean the created files during "make" and running our compiler.
+
 
