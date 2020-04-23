@@ -28,6 +28,7 @@ let translate (globals, functions) =
 
   (* Get types from the context *)
   let i32_t      = L.i32_type    context
+  and f32_t      = L.float_type  context
   and i1_t       = L.i1_type     context 
   and string_t   = L.pointer_type (L.i8_type context)
   in
@@ -43,6 +44,7 @@ let translate (globals, functions) =
   (* Return the LLVM type for a MicroC type *)
   let rec ltype_of_typ = function
       A.Int   -> i32_t
+    | A.Float -> f32_t
     | A.Bool  -> i1_t
     | A.String -> string_t
     | A.Array(t, len) -> L.array_type (ltype_of_typ t) len
@@ -85,6 +87,7 @@ let translate (globals, functions) =
   (* Create c style print format *)
     let rec format_type = function
         A.Int   -> "%d"
+      | A.Float -> "%f"
       | A.Bool  -> "%d"
       | A.String -> "%s"
       | A.Any -> raise (Failure ("Not implemented yet!"))
@@ -130,6 +133,7 @@ let translate (globals, functions) =
     (* Construct code for an expression; return its value *)
     let rec build_expr builder ((_, e) : sexpr) = match e with
         SLiteral i  -> L.const_int i32_t i
+      | SFloatLit f -> L.const_float f32_t f
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
       | SArrayLit a -> let (ty, sx) = (List.hd a) in
         L.const_array (ltype_of_typ ty) (Array.of_list (List.map (build_expr builder) a))
@@ -152,16 +156,48 @@ let translate (globals, functions) =
         let e1' = build_expr builder e1
         and e2' = build_expr builder e2 in
         (match op with
-           A.Add     -> L.build_add
-         | A.Sub     -> L.build_sub
-         | A.Mul     -> L.build_mul
-         | A.Div     -> L.build_sdiv  (* add nsw for overflow detection? *)
-         | A.Mod     -> L.build_srem
+           A.Add     -> (match e1, e2 with 
+                          (A.Int, _), (A.Int, _)  ->  L.build_add
+                        | (A.Float, _), (A.Float, _)  ->  L.build_fadd
+                        | _ -> raise (Failure ("Mix of float and int not supported"))
+                      )
+         | A.Sub     -> (match e1, e2 with 
+                          (A.Int, _), (A.Int, _)  ->  L.build_sub
+                        | (A.Float, _), (A.Float, _)  ->  L.build_fsub
+                        | _ -> raise (Failure ("Mix of float and int not supported"))
+                      )
+         | A.Mul     -> (match e1, e2 with 
+                          (A.Int, _), (A.Int, _)  ->  L.build_mul
+                        | (A.Float, _), (A.Float, _)  ->  L.build_fmul
+                        | _ -> raise (Failure ("Mix of float and int not supported"))
+                      )
+         | A.Div     -> (match e1, e2 with 
+                          (A.Int, _), (A.Int, _)  ->  L.build_sdiv
+                        | (A.Float, _), (A.Float, _)  ->  L.build_fdiv
+                        | _ -> raise (Failure ("Mix of float and int not supported"))
+                      )  (* add nsw for overflow detection? *)
+         | A.Mod     -> (match e1, e2 with 
+                          (A.Int, _), (A.Int, _)  ->  L.build_srem
+                        | (A.Float, _), (A.Float, _)  ->  L.build_frem
+                        | _ -> raise (Failure ("Mix of float and int not supported"))
+                      ) 
          | A.And     -> L.build_and
          | A.Or      -> L.build_or
-         | A.Equal   -> L.build_icmp L.Icmp.Eq
-         | A.Neq     -> L.build_icmp L.Icmp.Ne
-         | A.Less    -> L.build_icmp L.Icmp.Slt
+         | A.Equal   -> (match e1, e2 with 
+                          (A.Int, _), (A.Int, _)  ->  L.build_icmp L.Icmp.Eq
+                        | (A.Float, _), (A.Float, _)  ->  L.build_fcmp L.Fcmp.Oeq
+                        | _ -> raise (Failure ("Mix of float and int not supported"))
+                      )
+         | A.Neq     -> (match e1, e2 with 
+                          (A.Int, _), (A.Int, _)  ->  L.build_icmp L.Icmp.Ne
+                        | (A.Float, _), (A.Float, _)  ->  L.build_fcmp L.Fcmp.One
+                        | _ -> raise (Failure ("Mix of float and int not supported"))
+                      )
+         | A.Less    -> (match e1, e2 with 
+                          (A.Int, _), (A.Int, _)  ->  L.build_icmp L.Icmp.Slt
+                        | (A.Float, _), (A.Float, _)  ->  L.build_fcmp L.Fcmp.Olt
+                        | _ -> raise (Failure ("Mix of float and int not supported"))
+                      )
         ) e1' e2' "tmp" builder
       | SCall ("print", [(t, e)]) ->
         L.build_call printf_func [| format_str t; (build_expr builder (t, e)) |]

@@ -93,6 +93,7 @@ let check (globals, functions) =
     (* Return a semantically-checked expression, i.e., with a type *)
     let rec check_expr = function
         Literal l -> (Int, SLiteral l)
+      | FloatLit l -> (Float, SFloatLit l)
       | BoolLit l -> (Bool, SBoolLit l)
       | ArrayLit l -> 
         let (ty, e) = check_array_type (List.map check_expr l) in
@@ -143,8 +144,10 @@ let check (globals, functions) =
           (* Determine expression type based on operator and operand types *)
           let t = match op with
               Add | Sub | Mod | Mul | Div when t1 = Int -> Int
+            | Add | Sub | Mod | Mul | Div when t1 = Float -> Float
             | Equal | Neq -> Bool
             | Less when t1 = Int -> Bool
+            | Less when t1 = Float -> Bool
             | And | Or when t1 = Bool -> Bool
             | _ -> raise (Failure err)
           in

@@ -8,10 +8,11 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE PLUS MINUS MULTIPLY DIVIDE MODULO ASSIGN QUOTATION
 
 %token EQ NEQ LT AND OR
-%token IF ELSE WHILE INT BOOL STRING LIST
+%token IF ELSE WHILE INT FLOAT BOOL STRING LIST
 /* return, COMMA token */
 %token RETURN COMMA
 %token <int> INTLIT
+%token <float> FLOATLIT
 %token <bool> BOOLLIT
 %token <string> ID STRINGLIT
 %token EOF
@@ -48,6 +49,7 @@ vdecl:
 
 typ:
     INT   { Int   }
+  | FLOAT { Float }
   | BOOL  { Bool  }
   | STRING {String}
   | typ LBRACKET INTLIT RBRACKET  { Array ($1, $3) }
@@ -91,6 +93,7 @@ stmt:
 
 expr:
     INTLIT          { Literal($1)            }
+  | FLOATLIT        { FloatLit($1)           }
   | BOOLLIT             { BoolLit($1)            }
   | ID               { Id($1)                 }
   | ID LBRACKET INTLIT RBRACKET { ArrayAccess($1, $3) }
