@@ -11,7 +11,7 @@ liblist.a: list.o
 	ar -crs liblist.a list.o
 	ranlib liblist.a
 
-list.o: list.h list.c
+list.o: list.c
 
 .PHONY: clean
 clean:
