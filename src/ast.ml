@@ -2,10 +2,11 @@
 
 type op = Add | Sub | Mul | Div | Mod | Equal | Neq | Less | And | Or
 
-type typ = Int | Bool | String | Array of typ * int | Any | List
+type typ = Int | Float | Bool | String | Array of typ * int | Any | List
 
 type expr =
     Literal of int
+  | FloatLit of float
   | BoolLit of bool
   | Id of string
   | ArrayLit of expr list
@@ -54,6 +55,7 @@ let string_of_op = function
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
+  | FloatLit(l) -> string_of_float l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | ArrayLit(l) -> "{" ^ (String.concat ", " (List.map string_of_expr l)) ^ "}"
@@ -78,6 +80,7 @@ let rec string_of_stmt = function
 
 let rec string_of_typ = function
     Int -> "int"
+  | Float -> "float"
   | Bool -> "bool"
   | String -> "string"
   | Array(t, len) -> (string_of_typ t) ^ "[" ^ (string_of_int len) ^ "]"
