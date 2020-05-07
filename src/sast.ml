@@ -12,10 +12,12 @@ and sx =
   | SArrayAccess of string * int
   | SStringLit of string
   | SBinop of sexpr * op * sexpr
-  | SAssign of string * sexpr
+  | SAssign of sassign
   | SArrayAssign of string * int * sexpr
   (* call *)
   | SCall of string * sexpr list
+and
+sassign = string * sexpr
 
 type sstmt =
     SBlock of sstmt list
@@ -25,16 +27,21 @@ type sstmt =
   (* return *)
   | SReturn of sexpr
 
-(* func_def: ret_typ fname formals locals body *)
-type sfunc_def = {
+type sdef = 
+  | SVarDef of svar_def
+  | SFuncDef of sfunc_def
+and svar_def = 
+  | SDecl of typ * string
+  | SInit of typ * sassign
+and sfunc_def = {
   srtyp: typ;
   sfname: string;
-  sformals: bind list;
-  slocals: bind list;
+  sformals: svar_def list;
+  slocals: svar_def list;
   sbody: sstmt list;
 }
 
-type sprogram = bind list * sfunc_def list
+type sprogram = sdef list
 
 (* Pretty-printing functions *)
 let rec string_of_sexpr (t, e) =
@@ -49,11 +56,13 @@ let rec string_of_sexpr (t, e) =
       | SStringLit(s) -> "\"" ^ s ^ "\""
       | SBinop(e1, o, e2) ->
         string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
-      | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e
+      | SAssign(sassign) -> string_of_sassign sassign
       | SArrayAssign(v, i, e) -> v ^ "[" ^ (string_of_int i) ^ "]" ^ " = " ^ string_of_sexpr e
       | SCall(f, el) ->
           f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
     ) ^ ")"
+and
+string_of_sassign (string, sexpr) = string ^ " "^ string_of_sexpr sexpr
 
 let rec string_of_sstmt = function
     SBlock(stmts) ->
@@ -64,15 +73,26 @@ let rec string_of_sstmt = function
                        string_of_sstmt s1 ^ "else\n" ^ string_of_sstmt s2
   | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
 
+let string_of_svdecl = function
+    SDecl (typ, string) -> string_of_typ typ ^ " " ^ string
+  | SInit (typ, sassign) -> string_of_typ typ ^ " " ^ string_of_sassign sassign
+
 let string_of_sfdecl fdecl =
   string_of_typ fdecl.srtyp ^ " " ^
-  fdecl.sfname ^ "(" ^ String.concat ", " (List.map snd fdecl.sformals) ^
+  fdecl.sfname ^ "(" ^ String.concat ", " (List.map string_of_svdecl fdecl.sformals) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl fdecl.slocals) ^
+  String.concat "" (List.map string_of_svdecl fdecl.slocals) ^
   String.concat "" (List.map string_of_sstmt fdecl.sbody) ^
   "}\n"
 
-let string_of_sprogram (vars, funcs) =
-  "\n\nSementically checked program: \n\n" ^
-  String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_sfdecl funcs)
+let string_of_sdef = function
+    SVarDef(svar_def) -> string_of_svdecl svar_def
+  | SFuncDef(sfunc_def) -> string_of_sfdecl sfunc_def
+
+let string_of_sprogram (defs) =
+    "\n\nParsed program: \n\n" ^
+  String.concat "" (List.map string_of_sdef defs) ^ "\n"
+
+let extract_svar = function
+      SDecl (typ, string) -> (typ, string)
+    | SInit(typ, sassign) -> (typ, fst sassign)

@@ -32,12 +32,16 @@ open Ast
 
 /* add function declarations*/
 program:
-  decls EOF { $1}
+  decls EOF { $1 }
 
 decls:
-   /* nothing */ { ([], [])               }
- | vdecl SEMI decls { (($1 :: fst $3), snd $3) }
- | fdecl decls { (fst $2, ($1 :: snd $2)) }
+   /* nothing */ { [] }
+  | decl SEMI decls { $1 :: $3 }
+  | decl decls { $1 :: $2 }
+
+decl:
+    vdecl     { VarDef($1) }
+  | fdecl     { FuncDef($1)}
 
 vdecl_list:
   /*nothing*/ { [] }
@@ -45,7 +49,8 @@ vdecl_list:
 
 /* int x */
 vdecl:
-    typ ID { ($1, $2) }
+    typ ID      { Decl($1, $2) }
+  | typ assign  { Init($1, $2) }
 
 typ:
     INT   { Int   }
@@ -57,14 +62,14 @@ typ:
 
 /* fdecl */
 fdecl:
-  vdecl LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+  typ ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
   {
     {
-      rtyp=fst $1;
-      fname=snd $1;
-      formals=$3;
-      locals=$6;
-      body=$7
+      rtyp= $1;
+      fname= $2;
+      formals=$4;
+      locals=$7;
+      body=$8
     }
   }
 
@@ -109,11 +114,14 @@ expr:
   | expr LT     expr { Binop($1, Less,  $3)   }
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
-  | ID ASSIGN expr   { Assign($1, $3)         }
+  | assign   { Assign($1) }
   | ID LBRACKET INTLIT RBRACKET ASSIGN expr   { ArrayAssign($1, $3, $6) }
   | LPAREN expr RPAREN { $2                   }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
+
+assign:
+  ID ASSIGN expr { ($1, $3) }
 
 /* args_opt*/
 args_opt:

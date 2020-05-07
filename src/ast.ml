@@ -13,10 +13,12 @@ type expr =
   | ArrayAccess of string * int
   | StringLit of string
   | Binop of expr * op * expr
-  | Assign of string * expr
+  | Assign of assign
   | ArrayAssign of string * int * expr
   (* function call *)
   | Call of string * expr list
+
+and assign = string * expr
 
 type stmt =
     Block of stmt list
@@ -26,19 +28,23 @@ type stmt =
   (* return *)
   | Return of expr
 
+type def = 
+  | VarDef of var_def
+  | FuncDef of func_def
 (* int x: name binding *)
-type bind = typ * string
-
+and var_def = 
+  | Decl of typ * string
+  | Init of typ * assign
 (* func_def: ret_typ fname formals locals body *)
-type func_def = {
+and func_def = {
   rtyp: typ;
   fname: string;
-  formals: bind list;
-  locals: bind list;
+  formals: var_def list;
+  locals: var_def list;
   body: stmt list;
 }
 
-type program = bind list * func_def list
+type program = def list
 
 (* Pretty-printing functions *)
 let string_of_op = function
@@ -64,10 +70,12 @@ let rec string_of_expr = function
   | StringLit(s) -> "\"" ^ s ^ "\""
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
-  | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | Assign(assign) -> string_of_assign assign
   | ArrayAssign(v, i, e) -> v ^ "[" ^ (string_of_int i) ^ "]" ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
+and
+string_of_assign (string, expr) = string ^ " "^ string_of_expr expr
 
 let rec string_of_stmt = function
     Block(stmts) ->
@@ -87,17 +95,26 @@ let rec string_of_typ = function
   | Any -> "any"
   | List -> "list"
 
-let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+let string_of_vdecl = function
+    Decl(t, id) -> string_of_typ t ^ " " ^ id ^ ";\n"
+  | Init (t, assign) -> string_of_typ t  ^ " " ^ string_of_assign assign ^ ";\n"
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.rtyp ^ " " ^
-  fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
+  fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_vdecl fdecl.formals ) ^
   ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
-let string_of_program (vars, funcs) =
+let string_of_def = function
+    VarDef(var_def) -> string_of_vdecl var_def
+  | FuncDef(func_def) -> string_of_fdecl func_def
+
+let string_of_program (defs) =
   "\n\nParsed program: \n\n" ^
-  String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl funcs)
+  String.concat "" (List.map string_of_def defs) ^ "\n"
+
+  let extract_var = function
+      Decl (typ, string) -> (typ, string)
+    | Init(typ, assign) -> (typ, fst assign)

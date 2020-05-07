@@ -19,8 +19,17 @@ open Sast
 module StringMap = Map.Make(String)
 
 (* translate : Sast.program -> Llvm.module *)
-let translate (globals, functions) =
+let translate (defs) =
   let context    = L.global_context () in
+
+  let rec convert (defs, globals, functions) = 
+    match defs with
+      | [] -> (List.rev globals, List.rev functions)
+      | def::tails ->
+        match def with
+          Sast.SVarDef var_def -> convert (tails, var_def::globals, functions)
+        | Sast.SFuncDef func_def -> convert (tails, globals , func_def::functions) in
+      let globals, functions = convert (defs, [], []) in
 
   (* Create the LLVM compilation module into which
      we will generate code *)
@@ -52,13 +61,6 @@ let translate (globals, functions) =
     | A.Any -> raise (Failure ("Not implemented yet!"))
   in
 
-  (* Create a map of global variables after creating each *)
-  let global_vars : L.llvalue StringMap.t =
-    let global_var m (t, n) =
-      let init = L.const_int (ltype_of_typ t) 0
-      in StringMap.add n (L.define_global n init the_module) m in
-    List.fold_left global_var StringMap.empty globals in
-
   let printf_t : L.lltype =
     L.var_arg_function_type i32_t [| string_t |] in
   let printf_func : L.llvalue =
@@ -75,7 +77,7 @@ let translate (globals, functions) =
     let function_decl m fdecl =
       let name = fdecl.sfname
       and formal_types =
-        Array.of_list (List.map (fun (t,_) -> ltype_of_typ t) fdecl.sformals)
+        Array.of_list (List.map (fun (t,_) -> ltype_of_typ t) (List.map Sast.extract_svar fdecl.sformals))
       in let ftype = L.function_type (ltype_of_typ fdecl.srtyp) formal_types in
       StringMap.add name (L.define_function name ftype the_module, fdecl) m in
     List.fold_left function_decl StringMap.empty functions in
@@ -101,60 +103,34 @@ let translate (globals, functions) =
 
     let format_str t = L.build_global_stringptr ((format_type t) ^ "\n") "fmt" builder in
     
-    (* Construct the function's "locals": formal arguments and locally
-       declared variables.  Allocate each on the stack, initialize their
-       value, if appropriate, and remember their values in the "locals" map *)
-    let local_vars =
-      let add_formal m (t, n) p =
-        L.set_value_name n p;
-        let local = L.build_alloca (ltype_of_typ t) n builder in
-        ignore (L.build_store p local builder);
-        StringMap.add n local m
+    let lookup n local_vars global_vars = try StringMap.find n local_vars
+      with Not_found -> StringMap.find n global_vars  in
 
-      (* Allocate space for any locally declared variables and add the
-       * resulting registers to our map *)
-      and add_local m (t, n) =
-        let ty = ltype_of_typ t in
-          let local_var = L.build_alloca ty n builder
-          in StringMap.add n local_var m
-      in
-
-      let formals = List.fold_left2 add_formal StringMap.empty fdecl.sformals
-          (Array.to_list (L.params the_function)) in
-      List.fold_left add_local formals fdecl.slocals
-    in
-
-    (* Return the value for a variable or formal argument.
-       Check local names first, then global names *)
-    let lookup n = try StringMap.find n local_vars
-      with Not_found -> StringMap.find n global_vars
-    in
 
     (* Construct code for an expression; return its value *)
-    let rec build_expr builder ((_, e) : sexpr) = match e with
+    let rec build_expr builder local_vars global_vars ((_, e) : sexpr) = match e with
         SLiteral i  -> L.const_int i32_t i
       | SFloatLit f -> L.const_float f32_t f
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
       | SArrayLit a -> let (ty, sx) = (List.hd a) in
-        L.const_array (ltype_of_typ ty) (Array.of_list (List.map (build_expr builder) a))
+        L.const_array (ltype_of_typ ty) (Array.of_list (List.map (build_expr builder local_vars global_vars) a))
       | SArrayAccess (s, i) -> (*L.build_extractvalue (L.build_load (lookup v) v builder) i "" builder*)
-        let ptr = L.build_struct_gep (lookup s) i "addr" builder in
+        let ptr = L.build_struct_gep (lookup s local_vars global_vars) i "addr" builder in
         L.build_load ptr s builder
 
-      | SId s       -> L.build_load (lookup s) s builder
+      | SId s       -> L.build_load (lookup s local_vars global_vars) s builder
 
       | SStringLit s -> L.build_global_stringptr s "" builder
 
-      | SAssign (s, e) -> let e' = build_expr builder e in
-        ignore(L.build_store e' (lookup s) builder); e'
-
+      | SAssign (s, e) -> let e' = build_expr builder local_vars global_vars e in
+        ignore(L.build_store e' (lookup s local_vars global_vars) builder); e'
       | SArrayAssign (s, i, e) -> 
-        let e' = build_expr builder e
-        and ptr = L.build_struct_gep (lookup s) i "addr" builder in
+        let e' = build_expr builder local_vars global_vars e
+        and ptr = L.build_struct_gep (lookup s local_vars global_vars) i "addr" builder in
         ignore(L.build_store e' ptr builder); e'
       | SBinop (e1, op, e2) ->
-        let e1' = build_expr builder e1
-        and e2' = build_expr builder e2 in
+        let e1' = build_expr builder local_vars global_vars e1 
+        and e2' = build_expr builder local_vars global_vars e2 in
         (match op with
            A.Add     -> (match e1, e2 with 
                           (A.Int, _), (A.Int, _)  ->  L.build_add
@@ -200,17 +176,64 @@ let translate (globals, functions) =
                       )
         ) e1' e2' "tmp" builder
       | SCall ("print", [(t, e)]) ->
-        L.build_call printf_func [| format_str t; (build_expr builder (t, e)) |]
+        L.build_call printf_func [| format_str t; (build_expr builder local_vars global_vars (t, e)) |]
           "printf" builder
       | SCall ("add", [(t1, e1)]) ->
-        L.build_call add_func [| (build_expr builder (t1, e1))|]
+        L.build_call add_func [| (build_expr builder local_vars global_vars (t1, e1))|]
           "add" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
-        let llargs = List.rev (List.map (build_expr builder) (List.rev args)) in
+        let llargs = List.rev (List.map (build_expr builder local_vars global_vars) (List.rev args)) in
         let result = f ^ "_result" in
-        L.build_call fdef (Array.of_list llargs) result builder
+        L.build_call fdef (Array.of_list llargs) result builder in
+    (* Return the value for a variable or formal argument.
+       Check local names first, then global names *)
+    (* Create a map of global variables after creating each *)
+    let global_vars : L.llvalue StringMap.t =
+      let global_var m global =
+      match global with
+      | SDecl(t,n)->let init = L.const_int (ltype_of_typ t) 0 
+        in StringMap.add n (L.define_global n init the_module) m 
+      | SInit(t, sassign)-> let init =  (build_expr builder m StringMap.empty (snd sassign))
+        in StringMap.add (fst sassign) (L.define_global (fst sassign) init the_module) m 
+        in
+    List.fold_left global_var StringMap.empty globals in
+
+
+    (* Construct the function's "locals": formal arguments and locally
+       declared variables.  Allocate each on the stack, initialize their
+       value, if appropriate, and remember their values in the "locals" map *)
+    let local_vars =
+      let add_formal m formal p =
+      match formal with
+      | SDecl(t, n)->
+        L.set_value_name n p;
+        let local = L.build_alloca (ltype_of_typ t) n builder in
+        ignore (L.build_store p local builder);
+        StringMap.add n local m
+      | SInit(t, assign) -> raise (Failure ("Formal doesn't support initialization"))
+
+      (* Allocate space for any locally declared variables and add the
+       * resulting registers to our map *)
+      and add_local m local =
+      match local with
+      | SDecl(t, n)->
+        let ty = ltype_of_typ t in
+          let local_var = L.build_alloca ty n builder
+          in StringMap.add n local_var m
+      | SInit(t, assign)->
+        let ty = ltype_of_typ t in
+            let local_var = L.build_alloca ty (fst assign) builder in
+            let e' = build_expr builder m global_vars (snd assign) in
+            ignore(L.build_store e' local_var builder);
+          StringMap.add (fst assign) local_var m 
+          in
+
+      let formals = List.fold_left2 add_formal StringMap.empty fdecl.sformals
+          (Array.to_list (L.params the_function)) in
+      List.fold_left add_local formals fdecl.slocals
     in
+
 
     (* LLVM insists each basic block end with exactly one "terminator"
        instruction that transfers control.  This function runs "instr builder"
@@ -226,10 +249,10 @@ let translate (globals, functions) =
        after the one generated by this call) *)
     let rec build_stmt builder = function
         SBlock sl -> List.fold_left build_stmt builder sl
-      | SExpr e -> ignore(build_expr builder e); builder
-      | SReturn e -> ignore(L.build_ret (build_expr builder e) builder); builder
+      | SExpr e -> ignore(build_expr builder local_vars global_vars e); builder
+      | SReturn e -> ignore(L.build_ret (build_expr builder local_vars global_vars e) builder); builder
       | SIf (predicate, then_stmt, else_stmt) ->
-        let bool_val = build_expr builder predicate in
+        let bool_val = build_expr builder local_vars global_vars predicate in
 
         let then_bb = L.append_block context "then" the_function in
         ignore (build_stmt (L.builder_at_end context then_bb) then_stmt);
@@ -249,7 +272,7 @@ let translate (globals, functions) =
         let build_br_while = L.build_br while_bb in (* partial function *)
         ignore (build_br_while builder);
         let while_builder = L.builder_at_end context while_bb in
-        let bool_val = build_expr while_builder predicate in
+        let bool_val = build_expr while_builder local_vars global_vars predicate in
 
         let body_bb = L.append_block context "while_body" the_function in
         add_terminal (build_stmt (L.builder_at_end context body_bb) body) build_br_while;
