@@ -5,7 +5,7 @@ open Ast
 %}
 
 
-%token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE PLUS MINUS MULTIPLY DIVIDE MODULO ASSIGN QUOTATION
+%token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE PLUS MINUS MULTIPLY DIVIDE MODULO ASSIGN QUOTATION DOT
 
 %token EQ NEQ LT AND OR
 %token IF ELSE WHILE INT FLOAT BOOL STRING LIST
@@ -27,6 +27,8 @@ open Ast
 %left LT
 %left PLUS MINUS
 %left MULTIPLY DIVIDE MODULO
+%left LPAREN RPAREN
+%left DOT
 
 %%
 
@@ -119,6 +121,8 @@ expr:
   | LPAREN expr RPAREN { $2                   }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
+  /* Function calls like a.sum(), this works by interpreting a.sum(b, c) as sum(a, b, c) */
+  | expr DOT ID LPAREN args_opt RPAREN { Call($3, $1::$5) }
 
 assign:
   ID ASSIGN expr { ($1, $3) }

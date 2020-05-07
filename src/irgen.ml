@@ -37,7 +37,7 @@ let translate (defs) =
 
   (* Get types from the context *)
   let i32_t      = L.i32_type    context
-  and f32_t      = L.float_type  context
+  and float_t    = L.double_type context
   and i1_t       = L.i1_type     context 
   and string_t   = L.pointer_type (L.i8_type context)
   in
@@ -53,7 +53,7 @@ let translate (defs) =
   (* Return the LLVM type for a MicroC type *)
   let rec ltype_of_typ = function
       A.Int   -> i32_t
-    | A.Float -> f32_t
+    | A.Float -> float_t
     | A.Bool  -> i1_t
     | A.String -> string_t
     | A.Array(t, len) -> L.array_type (ltype_of_typ t) len
@@ -89,7 +89,7 @@ let translate (defs) =
   (* Create c style print format *)
     let rec format_type = function
         A.Int   -> "%d"
-      | A.Float -> "%f"
+      | A.Float -> "%.2f"
       | A.Bool  -> "%d"
       | A.String -> "%s"
       | A.Any -> raise (Failure ("Not implemented yet!"))
@@ -110,7 +110,7 @@ let translate (defs) =
     (* Construct code for an expression; return its value *)
     let rec build_expr builder local_vars global_vars ((_, e) : sexpr) = match e with
         SLiteral i  -> L.const_int i32_t i
-      | SFloatLit f -> L.const_float f32_t f
+      | SFloatLit f -> L.const_float float_t f
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
       | SArrayLit a -> let (ty, sx) = (List.hd a) in
         L.const_array (ltype_of_typ ty) (Array.of_list (List.map (build_expr builder local_vars global_vars) a))
