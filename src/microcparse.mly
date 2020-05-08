@@ -8,7 +8,7 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE PLUS MINUS MULTIPLY DIVIDE MODULO ASSIGN QUOTATION
 
 %token EQ NEQ LT AND OR
-%token IF ELSE WHILE INT BOOL STRING LIST
+%token IF ELSE WHILE INT BOOL STRING LIST FUNCTION
 /* return, COMMA token */
 %token RETURN COMMA
 %token <int> INTLIT
@@ -52,6 +52,7 @@ typ:
   | STRING {String}
   | typ LBRACKET INTLIT RBRACKET  { Array ($1, $3) }
   | LIST { List }
+  | FUNCTION { Function }
 
 /* fdecl */
 fdecl:
@@ -111,6 +112,7 @@ expr:
   | LPAREN expr RPAREN { $2                   }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
+  | fdecl            { FuncExpr($1) }
 
 /* args_opt*/
 args_opt:

@@ -2,7 +2,7 @@
 
 open Ast
 
-type sexpr = typ * sx
+type sexpr = typ * sx 
 and sx =
     SLiteral of int
   | SBoolLit of bool
@@ -15,17 +15,16 @@ and sx =
   | SArrayAssign of string * int * sexpr
   (* call *)
   | SCall of string * sexpr list
-
-type sstmt =
+  | SFuncExpr of sfunc_def
+and sstmt =
     SBlock of sstmt list
   | SExpr of sexpr
   | SIf of sexpr * sstmt * sstmt
   | SWhile of sexpr * sstmt
   (* return *)
   | SReturn of sexpr
-
 (* func_def: ret_typ fname formals locals body *)
-type sfunc_def = {
+and sfunc_def = {
   srtyp: typ;
   sfname: string;
   sformals: bind list;

@@ -49,6 +49,7 @@ rule token = parse
 | "List"   { LIST }
 | "true"   { BOOLLIT(true) }
 | "false"  { BOOLLIT(false) }
+| "func"    { FUNCTION }
 | digits as lem  { INTLIT(int_of_string lem) }
 | id as lem { ID(lem) }
 | '\"' { STRINGLIT ("\"" ^ (string (Buffer.create 128) lexbuf) ^ "\"") }

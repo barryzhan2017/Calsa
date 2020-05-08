@@ -11,7 +11,7 @@ module StringMap = Map.Make(String)
    Check each global variable, then check each function *)
 
 let check (globals, functions) =
-
+  let empty_func t = ({ typ_t = t; sformals_t = [] }) in
   (* Verify a list of bindings has no duplicate names *)
   let check_binds (kind : string) (binds : (typ * string) list) =
     let rec dups = function
@@ -58,7 +58,7 @@ let check (globals, functions) =
 
   let _ = find_func "main" in (* Ensure "main" is defined *)
 
-  let check_func func =
+  let rec check_func func =
     (* Make sure no formals or locals are void or duplicates *)
     check_binds "formal" func.formals;
     check_binds "local" func.locals;
@@ -164,6 +164,9 @@ let check (globals, functions) =
           in
           let args' = List.map2 check_call fd.formals args
           in (fd.rtyp, SCall(fname, args'))
+      (* Fuction expression: Evaluate the function recursively*)
+      | FuncExpr fn -> 
+        (SFunction (empty_func Void), SFuncExpr (check_func fn))
     in
 
     let check_bool_expr e =
