@@ -24,12 +24,9 @@ ocamlbuild -pkgs llvm src/microc.native
 
 ### Run the MicroC compiler and generate llvm code
 ```
-./microc.native -l example.mc > example.out
-```
-
-### Run the llvm code
-```
-lli example.out
+cd src
+microc.native test/list.mc
+a.out
 ```
 
 ### Compiler files
