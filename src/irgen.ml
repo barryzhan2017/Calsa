@@ -24,12 +24,12 @@ let translate (defs) =
 
   let rec convert (defs, globals, functions) = 
     match defs with
-      | [] -> (List.rev globals, List.rev functions)
-      | def::tails ->
-        match def with
-          Sast.SVarDef var_def -> convert (tails, var_def::globals, functions)
-        | Sast.SFuncDef func_def -> convert (tails, globals , func_def::functions) in
-      let globals, functions = convert (defs, [], []) in
+    | [] -> (List.rev globals, List.rev functions)
+    | def::tails ->
+      match def with
+        Sast.SVarDef var_def -> convert (tails, var_def::globals, functions)
+      | Sast.SFuncDef func_def -> convert (tails, globals , func_def::functions) in
+  let globals, functions = convert (defs, [], []) in
 
   (* Create the LLVM compilation module into which
      we will generate code *)
@@ -42,13 +42,13 @@ let translate (defs) =
   and string_t   = L.pointer_type (L.i8_type context)
   in
 
-    (* Declare struct StringList *)
-  
+  (* Declare struct StringList *)
+
   let struct_list_t : L.lltype =
     L.named_struct_type context "List" in
   let _ =
     L.struct_set_body struct_list_t
-    [| string_t ; L.pointer_type struct_list_t |] false in
+      [| string_t ; L.pointer_type struct_list_t |] false in
 
   (* Return the LLVM type for a MicroC type *)
   let rec ltype_of_typ = function
@@ -68,7 +68,7 @@ let translate (defs) =
 
   (* Declare each C++ function *)
   let add_t : L.lltype = L.function_type i32_t
-    [|struct_list_t|] in
+      [|struct_list_t|] in
   let add_func : L.llvalue = L.declare_function "add" add_t the_module in
 
   (* Define each function (arguments and return type) so we can
@@ -86,7 +86,7 @@ let translate (defs) =
   let build_function_body fdecl =
     let (the_function, _) = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-  (* Create c style print format *)
+    (* Create c style print format *)
     let rec format_type = function
         A.Int   -> "%d"
       | A.Float -> "%.2f"
@@ -95,16 +95,16 @@ let translate (defs) =
       | A.Any -> raise (Failure ("Not implemented yet!"))
       | A.List -> raise (Failure ("Not implemented yet!")) 
       | A.Array(t, len) -> 
-          let format =  Array.make len (format_type t) in 
-            let result = Array.fold_left (fun a b -> a ^ b ^ ", ") "[" format in
-              (String.sub result 0 (String.length result - 2)) ^ "]" in
-      
-      
+        let format =  Array.make len (format_type t) in 
+        let result = Array.fold_left (fun a b -> a ^ b ^ ", ") "[" format in
+        (String.sub result 0 (String.length result - 2)) ^ "]" in
+
+
 
     let format_str t = L.build_global_stringptr ((format_type t) ^ "\n") "fmt" builder in
-    
-    let lookup n local_vars global_vars = try StringMap.find n local_vars
-      with Not_found -> StringMap.find n global_vars  in
+
+    let lookup n local_vars global_vars = try StringMap.find n !local_vars
+      with Not_found -> StringMap.find n !global_vars  in
 
 
     (* Construct code for an expression; return its value *)
@@ -133,47 +133,47 @@ let translate (defs) =
         and e2' = build_expr builder local_vars global_vars e2 in
         (match op with
            A.Add     -> (match e1, e2 with 
-                          (A.Int, _), (A.Int, _)  ->  L.build_add
-                        | (A.Float, _), (A.Float, _)  ->  L.build_fadd
-                        | _ -> raise (Failure ("Mix of float and int not supported"))
-                      )
+               (A.Int, _), (A.Int, _)  ->  L.build_add
+             | (A.Float, _), (A.Float, _)  ->  L.build_fadd
+             | _ -> raise (Failure ("Mix of float and int not supported"))
+           )
          | A.Sub     -> (match e1, e2 with 
-                          (A.Int, _), (A.Int, _)  ->  L.build_sub
-                        | (A.Float, _), (A.Float, _)  ->  L.build_fsub
-                        | _ -> raise (Failure ("Mix of float and int not supported"))
-                      )
+               (A.Int, _), (A.Int, _)  ->  L.build_sub
+             | (A.Float, _), (A.Float, _)  ->  L.build_fsub
+             | _ -> raise (Failure ("Mix of float and int not supported"))
+           )
          | A.Mul     -> (match e1, e2 with 
-                          (A.Int, _), (A.Int, _)  ->  L.build_mul
-                        | (A.Float, _), (A.Float, _)  ->  L.build_fmul
-                        | _ -> raise (Failure ("Mix of float and int not supported"))
-                      )
+               (A.Int, _), (A.Int, _)  ->  L.build_mul
+             | (A.Float, _), (A.Float, _)  ->  L.build_fmul
+             | _ -> raise (Failure ("Mix of float and int not supported"))
+           )
          | A.Div     -> (match e1, e2 with 
-                          (A.Int, _), (A.Int, _)  ->  L.build_sdiv
-                        | (A.Float, _), (A.Float, _)  ->  L.build_fdiv
-                        | _ -> raise (Failure ("Mix of float and int not supported"))
-                      )  (* add nsw for overflow detection? *)
+               (A.Int, _), (A.Int, _)  ->  L.build_sdiv
+             | (A.Float, _), (A.Float, _)  ->  L.build_fdiv
+             | _ -> raise (Failure ("Mix of float and int not supported"))
+           )  (* add nsw for overflow detection? *)
          | A.Mod     -> (match e1, e2 with 
-                          (A.Int, _), (A.Int, _)  ->  L.build_srem
-                        | (A.Float, _), (A.Float, _)  ->  L.build_frem
-                        | _ -> raise (Failure ("Mix of float and int not supported"))
-                      ) 
+               (A.Int, _), (A.Int, _)  ->  L.build_srem
+             | (A.Float, _), (A.Float, _)  ->  L.build_frem
+             | _ -> raise (Failure ("Mix of float and int not supported"))
+           ) 
          | A.And     -> L.build_and
          | A.Or      -> L.build_or
          | A.Equal   -> (match e1, e2 with 
-                          (A.Int, _), (A.Int, _)  ->  L.build_icmp L.Icmp.Eq
-                        | (A.Float, _), (A.Float, _)  ->  L.build_fcmp L.Fcmp.Oeq
-                        | _ -> raise (Failure ("Mix of float and int not supported"))
-                      )
+               (A.Int, _), (A.Int, _)  ->  L.build_icmp L.Icmp.Eq
+             | (A.Float, _), (A.Float, _)  ->  L.build_fcmp L.Fcmp.Oeq
+             | _ -> raise (Failure ("Mix of float and int not supported"))
+           )
          | A.Neq     -> (match e1, e2 with 
-                          (A.Int, _), (A.Int, _)  ->  L.build_icmp L.Icmp.Ne
-                        | (A.Float, _), (A.Float, _)  ->  L.build_fcmp L.Fcmp.One
-                        | _ -> raise (Failure ("Mix of float and int not supported"))
-                      )
+               (A.Int, _), (A.Int, _)  ->  L.build_icmp L.Icmp.Ne
+             | (A.Float, _), (A.Float, _)  ->  L.build_fcmp L.Fcmp.One
+             | _ -> raise (Failure ("Mix of float and int not supported"))
+           )
          | A.Less    -> (match e1, e2 with 
-                          (A.Int, _), (A.Int, _)  ->  L.build_icmp L.Icmp.Slt
-                        | (A.Float, _), (A.Float, _)  ->  L.build_fcmp L.Fcmp.Olt
-                        | _ -> raise (Failure ("Mix of float and int not supported"))
-                      )
+               (A.Int, _), (A.Int, _)  ->  L.build_icmp L.Icmp.Slt
+             | (A.Float, _), (A.Float, _)  ->  L.build_fcmp L.Fcmp.Olt
+             | _ -> raise (Failure ("Mix of float and int not supported"))
+           )
         ) e1' e2' "tmp" builder
       | SCall ("print", [(t, e)]) ->
         L.build_call printf_func [| format_str t; (build_expr builder local_vars global_vars (t, e)) |]
@@ -189,15 +189,15 @@ let translate (defs) =
     (* Return the value for a variable or formal argument.
        Check local names first, then global names *)
     (* Create a map of global variables after creating each *)
-    let global_vars : L.llvalue StringMap.t =
+    let global_vars : L.llvalue StringMap.t ref =
       let global_var m global =
-      match global with
-      | SDecl(t,n)->let init = L.const_int (ltype_of_typ t) 0 
-        in StringMap.add n (L.define_global n init the_module) m 
-      | SInit(t, sassign)-> let init =  (build_expr builder m StringMap.empty (snd sassign))
-        in StringMap.add (fst sassign) (L.define_global (fst sassign) init the_module) m 
-        in
-    List.fold_left global_var StringMap.empty globals in
+        match global with
+        | SDecl(t,n)->let init = L.const_int (ltype_of_typ t) 0 
+          in m:=StringMap.add n (L.define_global n init the_module) !m;m
+        | SInit(t, sassign)-> let init =  (build_expr builder m (ref StringMap.empty) (snd sassign))
+          in m:=StringMap.add (fst sassign) (L.define_global (fst sassign) init the_module) !m;m
+      in
+      List.fold_left global_var (ref StringMap.empty) globals in
 
 
     (* Construct the function's "locals": formal arguments and locally
@@ -205,33 +205,30 @@ let translate (defs) =
        value, if appropriate, and remember their values in the "locals" map *)
     let local_vars =
       let add_formal m formal p =
-      match formal with
-      | SDecl(t, n)->
-        L.set_value_name n p;
-        let local = L.build_alloca (ltype_of_typ t) n builder in
-        ignore (L.build_store p local builder);
-        StringMap.add n local m
-      | SInit(t, assign) -> raise (Failure ("Formal doesn't support initialization"))
+        match formal with
+        | SDecl(t, n)->
+          L.set_value_name n p;
+          let local = L.build_alloca (ltype_of_typ t) n builder in
+          ignore (L.build_store p local builder);
+          m:=StringMap.add n local !m;m
+        | SInit(t, assign) -> raise (Failure ("Formal doesn't support initialization"))
+      in
 
-      (* Allocate space for any locally declared variables and add the
-       * resulting registers to our map *)
-      and add_local m local =
+      List.fold_left2 add_formal (ref StringMap.empty) fdecl.sformals
+        (Array.to_list (L.params the_function)) in
+
+    (* Allocate space for any locally declared variables and add the
+      * resulting registers to our map *)
+    let add_local m local =
       match local with
       | SDecl(t, n)->
-        let ty = ltype_of_typ t in
-          let local_var = L.build_alloca ty n builder
-          in StringMap.add n local_var m
+        let local_var = L.build_alloca (ltype_of_typ t) n builder
+        in m:=StringMap.add n local_var !m;m
       | SInit(t, assign)->
-        let ty = ltype_of_typ t in
-            let local_var = L.build_alloca ty (fst assign) builder in
-            let e' = build_expr builder m global_vars (snd assign) in
-            ignore(L.build_store e' local_var builder);
-          StringMap.add (fst assign) local_var m 
-          in
-
-      let formals = List.fold_left2 add_formal StringMap.empty fdecl.sformals
-          (Array.to_list (L.params the_function)) in
-      List.fold_left add_local formals fdecl.slocals
+        let local_var = L.build_alloca (ltype_of_typ t) (fst assign) builder in
+        let e' = build_expr builder m global_vars (snd assign) in
+        ignore(L.build_store e' local_var builder);
+        m:=StringMap.add (fst assign) local_var !m;m
     in
 
 
@@ -282,6 +279,8 @@ let translate (defs) =
         ignore(L.build_cond_br bool_val body_bb end_bb while_builder);
         L.builder_at_end context end_bb
 
+      | SLocalVarDef(local) -> ignore(add_local local_vars local); builder
+      
     in
     (* Build the code for each statement in the function *)
     let func_builder = build_stmt builder (SBlock fdecl.sbody) in

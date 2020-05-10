@@ -27,8 +27,9 @@ type stmt =
   | While of expr * stmt
   (* return *)
   | Return of expr
+  | LocalVarDef of var_def
 
-type def = 
+and def = 
   | VarDef of var_def
   | FuncDef of func_def
 (* int x: name binding *)
@@ -40,7 +41,6 @@ and func_def = {
   rtyp: typ;
   fname: string;
   formals: var_def list;
-  locals: var_def list;
   body: stmt list;
 }
 
@@ -77,15 +77,6 @@ let rec string_of_expr = function
 and
 string_of_assign (string, expr) = string ^ " "^ string_of_expr expr
 
-let rec string_of_stmt = function
-    Block(stmts) ->
-    "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
-  | Expr(expr) -> string_of_expr expr ^ ";\n"
-  | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n"
-  | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
-                      string_of_stmt s1 ^ "else\n" ^ string_of_stmt s2
-  | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
-
 let rec string_of_typ = function
     Int -> "int"
   | Float -> "float"
@@ -99,11 +90,20 @@ let string_of_vdecl = function
     Decl(t, id) -> string_of_typ t ^ " " ^ id ^ ";\n"
   | Init (t, assign) -> string_of_typ t  ^ " " ^ string_of_assign assign ^ ";\n"
 
+let rec string_of_stmt = function
+    Block(stmts) ->
+    "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
+  | Expr(expr) -> string_of_expr expr ^ ";\n"
+  | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n"
+  | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
+                      string_of_stmt s1 ^ "else\n" ^ string_of_stmt s2
+  | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
+  | LocalVarDef(l) -> string_of_vdecl l
+
 let string_of_fdecl fdecl =
   string_of_typ fdecl.rtyp ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_vdecl fdecl.formals ) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 

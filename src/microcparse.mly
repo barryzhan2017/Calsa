@@ -45,10 +45,6 @@ decl:
     vdecl     { VarDef($1) }
   | fdecl     { FuncDef($1)}
 
-vdecl_list:
-  /*nothing*/ { [] }
-  | vdecl SEMI vdecl_list  {  $1 :: $3 }
-
 /* int x */
 vdecl:
     typ ID      { Decl($1, $2) }
@@ -64,14 +60,13 @@ typ:
 
 /* fdecl */
 fdecl:
-  typ ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+  typ ID LPAREN formals_opt RPAREN LBRACE stmt_list RBRACE
   {
     {
       rtyp= $1;
       fname= $2;
       formals=$4;
-      locals=$7;
-      body=$8
+      body=$7;
     }
   }
 
@@ -97,6 +92,7 @@ stmt:
   | WHILE LPAREN expr RPAREN stmt           { While ($3, $5)  }
   /* return */
   | RETURN expr SEMI                        { Return $2      }
+  | vdecl SEMI                              { LocalVarDef $1 }
 
 expr:
     INTLIT          { Literal($1)            }

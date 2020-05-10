@@ -19,19 +19,23 @@ float gcdf(float a, float b) {
 }
 
 int main() {
-  int x;
-  int y;
+  int x = 2;
+  int y = 14;
   float c;
   float d;
   a = 18;
   b = 9;
-  x = 2;
-  y = 14;
   c = 2.0;
   d = 14.0;
   print(gcd(x,y));
-  print(gcd(3,15));
-  print(gcd(99,121));
+  x = 3;
+  y = 15;
+  print(gcd(x,y));
+
+  int i = 10;
+  int j = 15;
+  print(gcd(i, j));
+  
   print(gcd(a,b));
   print(1.0);
   print(gcdf(c,d));
