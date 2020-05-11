@@ -16,8 +16,7 @@ and sx =
   | SArrayAssign of string * int * sexpr
   (* call *)
   | SCall of string * sexpr list
-and
-sassign = string * sexpr
+and sassign = string * sexpr
 
 type sstmt =
     SBlock of sstmt list

@@ -8,7 +8,7 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE PLUS MINUS MULTIPLY DIVIDE MODULO ASSIGN QUOTATION DOT
 
 %token EQ NEQ LT AND OR
-%token IF ELSE WHILE INT FLOAT BOOL STRING LIST
+%token IF ELSE WHILE INT VOID FLOAT BOOL STRING LIST
 /* return, COMMA token */
 %token RETURN COMMA
 %token <int> INTLIT
@@ -56,6 +56,7 @@ vdecl:
 
 typ:
     INT   { Int   }
+  | VOID  { Void  }
   | FLOAT { Float }
   | BOOL  { Bool  }
   | STRING {String}

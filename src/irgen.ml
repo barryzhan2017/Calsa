@@ -37,27 +37,32 @@ let translate (defs) =
 
   (* Get types from the context *)
   let i32_t      = L.i32_type    context
+  and void_t     = L.void_type   context
   and float_t    = L.double_type context
   and i1_t       = L.i1_type     context 
+  and i8_t       = L.i8_type     context
   and string_t   = L.pointer_type (L.i8_type context)
   in
 
     (* Declare struct StringList *)
   
+  let struct_listNode_t : L.lltype =
+    L.named_struct_type context "ListNode" in
   let struct_list_t : L.lltype =
     L.named_struct_type context "List" in
   let _ =
     L.struct_set_body struct_list_t
-    [| string_t ; L.pointer_type struct_list_t |] false in
+    [| L.pointer_type struct_listNode_t; L.pointer_type struct_listNode_t; i32_t |] false in
 
   (* Return the LLVM type for a MicroC type *)
   let rec ltype_of_typ = function
       A.Int   -> i32_t
+    | A.Void  -> void_t
     | A.Float -> float_t
     | A.Bool  -> i1_t
     | A.String -> string_t
     | A.Array(t, len) -> L.array_type (ltype_of_typ t) len
-    | A.List  -> struct_list_t
+    | A.List -> struct_list_t
     | A.Any -> raise (Failure ("Not implemented yet!"))
   in
 
@@ -67,9 +72,13 @@ let translate (defs) =
     L.declare_function "printf" printf_t the_module in
 
   (* Declare each C++ function *)
-  let add_t : L.lltype = L.function_type i32_t
-    [|struct_list_t|] in
+  let add_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_list_t; i32_t |] in
   let add_func : L.llvalue = L.declare_function "add" add_t the_module in
+
+  let initList_t : L.lltype = L.function_type void_t [| L.pointer_type struct_list_t |] in
+  let initList_func : L.llvalue = L.declare_function "initList" initList_t the_module in
+
+  let printList_func : L.llvalue = L.declare_function "print" initList_t the_module in
 
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
@@ -176,10 +185,15 @@ let translate (defs) =
                       )
         ) e1' e2' "tmp" builder
       | SCall ("print", [(t, e)]) ->
-        L.build_call printf_func [| format_str t; (build_expr builder local_vars global_vars (t, e)) |]
+        if t = List then
+          let SId s = e in
+          L.build_call printList_func [| L.build_bitcast (L.build_struct_gep (lookup s local_vars global_vars) 0 "" builder) (L.pointer_type struct_list_t) "" builder |] "" builder
+        else
+          L.build_call printf_func [| format_str t; (build_expr builder local_vars global_vars (t, e)) |]
           "printf" builder
-      | SCall ("add", [(t1, e1)]) ->
-        L.build_call add_func [| (build_expr builder local_vars global_vars (t1, e1))|]
+      | SCall ("add", [(t1, SId s); (t2, e2)]) ->
+        L.build_call add_func [| L.build_bitcast (L.build_struct_gep (lookup s local_vars global_vars) 0 "" builder) (L.pointer_type struct_list_t) "" builder; (build_expr builder local_vars global_vars (t2, e2)) |]
+        (*Array.of_list (List.map (build_expr builder local_vars global_vars) args)*)
           "add" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
@@ -219,7 +233,13 @@ let translate (defs) =
       match local with
       | SDecl(t, n)->
         let ty = ltype_of_typ t in
-          let local_var = L.build_alloca ty n builder
+          let local_var = L.build_alloca ty n builder in
+          let _ = 
+            (
+              match t with
+              | A.List -> L.build_call initList_func [| local_var |] "" builder;
+              | _ -> local_var
+            )
           in StringMap.add n local_var m
       | SInit(t, assign)->
         let ty = ltype_of_typ t in

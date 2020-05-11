@@ -1,5 +1,6 @@
 int main() {
     List a;
-    add(a);
-    a.add();
+    a.add(1);
+    a.add(2);
+    a.print();
 }

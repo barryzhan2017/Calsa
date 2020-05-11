@@ -48,7 +48,8 @@ rule token = parse
 | "int"    { INT }
 | "float"  { FLOAT }
 | "bool"   { BOOL }
-| "string"   { STRING }
+| "void"   { VOID }
+| "string" { STRING }
 | "List"   { LIST }
 | "true"   { BOOLLIT(true) }
 | "false"  { BOOLLIT(false) }

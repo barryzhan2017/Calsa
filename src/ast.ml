@@ -2,7 +2,7 @@
 
 type op = Add | Sub | Mul | Div | Mod | Equal | Neq | Less | And | Or
 
-type typ = Int | Float | Bool | String | Array of typ * int | Any | List
+type typ = Int | Void | Float | Bool | String | Array of typ * int | Any | List
 
 type expr =
     Literal of int
@@ -88,6 +88,7 @@ let rec string_of_stmt = function
 
 let rec string_of_typ = function
     Int -> "int"
+  | Void -> "void"
   | Float -> "float"
   | Bool -> "bool"
   | String -> "string"
