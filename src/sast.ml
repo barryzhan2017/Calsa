@@ -25,8 +25,9 @@ type sstmt =
   | SWhile of sexpr * sstmt
   (* return *)
   | SReturn of sexpr
+  | SLocalVarDef of svar_def
 
-type sdef = 
+and sdef = 
   | SVarDef of svar_def
   | SFuncDef of sfunc_def
 and svar_def = 
@@ -36,7 +37,6 @@ and sfunc_def = {
   srtyp: typ;
   sfname: string;
   sformals: svar_def list;
-  slocals: svar_def list;
   sbody: sstmt list;
 }
 
@@ -58,11 +58,15 @@ let rec string_of_sexpr (t, e) =
       | SAssign(sassign) -> string_of_sassign sassign
       | SArrayAssign(v, i, e) -> v ^ "[" ^ (string_of_int i) ^ "]" ^ " = " ^ string_of_sexpr e
       | SCall(f, el) ->
-          f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
+        f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
     ) ^ ")"
 and
-string_of_sassign (string, sexpr) = string ^ " "^ string_of_sexpr sexpr
+  string_of_sassign (string, sexpr) = string ^ " "^ string_of_sexpr sexpr
 
+
+let string_of_svdecl = function
+    SDecl (typ, string) -> string_of_typ typ ^ " " ^ string
+  | SInit (typ, sassign) -> string_of_typ typ ^ " " ^ string_of_sassign sassign
 let rec string_of_sstmt = function
     SBlock(stmts) ->
     "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
@@ -71,16 +75,12 @@ let rec string_of_sstmt = function
   | SIf(e, s1, s2) ->  "if (" ^ string_of_sexpr e ^ ")\n" ^
                        string_of_sstmt s1 ^ "else\n" ^ string_of_sstmt s2
   | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
-
-let string_of_svdecl = function
-    SDecl (typ, string) -> string_of_typ typ ^ " " ^ string
-  | SInit (typ, sassign) -> string_of_typ typ ^ " " ^ string_of_sassign sassign
+  | SLocalVarDef l -> string_of_svdecl l
 
 let string_of_sfdecl fdecl =
   string_of_typ fdecl.srtyp ^ " " ^
   fdecl.sfname ^ "(" ^ String.concat ", " (List.map string_of_svdecl fdecl.sformals) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_svdecl fdecl.slocals) ^
   String.concat "" (List.map string_of_sstmt fdecl.sbody) ^
   "}\n"
 
@@ -89,9 +89,9 @@ let string_of_sdef = function
   | SFuncDef(sfunc_def) -> string_of_sfdecl sfunc_def
 
 let string_of_sprogram (defs) =
-    "\n\nParsed program: \n\n" ^
+  "\n\nParsed program: \n\n" ^
   String.concat "" (List.map string_of_sdef defs) ^ "\n"
 
 let extract_svar = function
-      SDecl (typ, string) -> (typ, string)
-    | SInit(typ, sassign) -> (typ, fst sassign)
+    SDecl (typ, string) -> (typ, string)
+  | SInit(typ, sassign) -> (typ, fst sassign)
