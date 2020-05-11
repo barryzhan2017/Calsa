@@ -5,13 +5,14 @@ open Ast
 %}
 
 
-%token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE PLUS MINUS MULTIPLY DIVIDE MODULO ASSIGN QUOTATION
+%token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE PLUS MINUS MULTIPLY DIVIDE MODULO ASSIGN QUOTATION DOT
 
 %token EQ NEQ LT AND OR
-%token IF ELSE WHILE INT BOOL STRING LIST FUNCTION
+%token IF ELSE WHILE INT VOID FLOAT BOOL STRING LIST FUNCTION
 /* return, COMMA token */
 %token RETURN COMMA
 %token <int> INTLIT
+%token <float> FLOATLIT
 %token <bool> BOOLLIT
 %token <string> ID STRINGLIT
 %token EOF
@@ -26,28 +27,33 @@ open Ast
 %left LT
 %left PLUS MINUS
 %left MULTIPLY DIVIDE MODULO
+%left LPAREN RPAREN
+%left DOT
 
 %%
 
 /* add function declarations*/
 program:
-  decls EOF { $1}
+  decls EOF { $1 }
 
 decls:
-   /* nothing */ { ([], [])               }
- | vdecl SEMI decls { (($1 :: fst $3), snd $3) }
- | fdecl decls { (fst $2, ($1 :: snd $2)) }
+   /* nothing */ { [] }
+  | decl SEMI decls { $1 :: $3 }
+  | decl decls { $1 :: $2 }
 
-vdecl_list:
-  /*nothing*/ { [] }
-  | vdecl SEMI vdecl_list  {  $1 :: $3 }
+decl:
+    vdecl     { VarDef($1) }
+  | fdecl     { FuncDef($1)}
 
 /* int x */
 vdecl:
-    typ ID { ($1, $2) }
+    typ ID      { Decl($1, $2) }
+  | typ assign  { Init($1, $2) }
 
 typ:
     INT   { Int   }
+  | VOID  { Void  }
+  | FLOAT { Float }
   | BOOL  { Bool  }
   | STRING {String}
   | typ LBRACKET INTLIT RBRACKET  { Array ($1, $3) }
@@ -56,14 +62,13 @@ typ:
 
 /* fdecl */
 fdecl:
-  vdecl LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+  typ ID LPAREN formals_opt RPAREN LBRACE stmt_list RBRACE
   {
     {
-      rtyp=fst $1;
-      fname=snd $1;
-      formals=$3;
-      locals=$6;
-      body=$7
+      rtyp= $1;
+      fname= $2;
+      formals=$4;
+      body=$7;
     }
   }
 
@@ -89,9 +94,11 @@ stmt:
   | WHILE LPAREN expr RPAREN stmt           { While ($3, $5)  }
   /* return */
   | RETURN expr SEMI                        { Return $2      }
+  | vdecl SEMI                              { LocalVarDef $1 }
 
 expr:
     INTLIT          { Literal($1)            }
+  | FLOATLIT        { FloatLit($1)           }
   | BOOLLIT             { BoolLit($1)            }
   | ID               { Id($1)                 }
   | ID LBRACKET INTLIT RBRACKET { ArrayAccess($1, $3) }
@@ -107,12 +114,17 @@ expr:
   | expr LT     expr { Binop($1, Less,  $3)   }
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
-  | ID ASSIGN expr   { Assign($1, $3)         }
+  | assign   { Assign($1) }
   | ID LBRACKET INTLIT RBRACKET ASSIGN expr   { ArrayAssign($1, $3, $6) }
   | LPAREN expr RPAREN { $2                   }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
   | fdecl            { FuncExpr($1) }
+  /* Function calls like a.sum(), this works by interpreting a.sum(b, c) as sum(a, b, c) */
+  | expr DOT ID LPAREN args_opt RPAREN { Call($3, $1::$5) }
+
+assign:
+  ID ASSIGN expr { ($1, $3) }
 
 /* args_opt*/
 args_opt:

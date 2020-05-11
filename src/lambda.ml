@@ -2,25 +2,32 @@
  open Ast
  
  module StringMap = Map.Make(String)
- 
- 
+
+let extract_svar  = function
+  SDecl (typ, s) -> (typ, s)
+| SInit(typ, sassign) -> (typ, fst sassign)
+
+let to_formals fakes =  List.map extract_svar fakes
+
  (* Some types for lifting *)
  type environment = {
      variables : typ StringMap.t;
      parent: environment option;
- }
- (* Mix with sfunc_def*)
- type lfexpr = {
+}
+
+type lfexpr = {
      name : string;
-     fvs : bind list;
+     free_vars : bind list;
      styp : typ;
      sformals : bind list;
      sbody : sstmt list;
  }
+ 
+
  let built_in_decls =
-     let empty_func t = ({ typ_t = t; sformals_t = [] }) in
+     let empty_func t = ({ typ_t = t; formals_t = [] }) in
      let add_default map (name, ty) = StringMap.add name (SFunction ty) map
-     in List.fold_left add_default StringMap.empty [("print", empty_func Int); ("add", empty_func Int)]
+     in List.fold_left add_default StringMap.empty [("print", empty_func Int); ("add", empty_func Bool)]
 
  (* Look up function: traverse up the tree until
  * we encounter a symbol *)
@@ -40,16 +47,25 @@
      SBlock(stmts) ->
              let (fncs1, fvs1, _, stmts') = dfs_stmts fncs env stmts
              in (fncs1, fvs1, env, SBlock(stmts'))
-   | SDcl(ty, id, e) ->
-                   let (fncs1, fvs1, e1') = dfs_expr fncs env e ~fname:id in
-                   let (t1, _) = e1' in
-                   let new_typ = match (ty, t1) with
-                                 SFunction(_), SFunction(_) -> t1
-                               | _ -> ty
-                   in
-                   let new_env = {variables = StringMap.add id new_typ env.variables;
-                   parent = env.parent} in
-                   (fncs1, fvs1, new_env, SDcl(new_typ, id, e1'))
+   | SLocalVarDef(def) -> (
+                    match def with   
+                    SInit(t, sass) -> 
+                    let (fncs1, fvs1, e1') = dfs_expr fncs env (snd sass) ~fname:(fst sass) in
+                      let (t1, _) = e1' in
+                      let new_typ = match (t, t1) with
+                                    SFunction(_), SFunction(_) -> t1
+                                  | _ -> t
+                      in
+                      let new_env = {variables = StringMap.add (fst sass) new_typ env.variables;
+                      parent = env.parent} in
+                      let init = SInit(new_typ, ((fst sass), e1')) 
+                      in
+                      (fncs1, fvs1, new_env, SLocalVarDef(init))
+                    (*Should we need this??*)
+                  | SDecl (t, s) -> 
+                      let new_env = {variables = StringMap.add (s) t env.variables;
+                      parent = env.parent} 
+                      in (fncs, [], new_env, SLocalVarDef(def)))
    | SExpr(e) ->
                    let (fncs1, fvs1, e1') = dfs_expr fncs env e in
                    (fncs1, fvs1, env, SExpr(e1'))
@@ -98,6 +114,12 @@
                  Some(x) -> x :: fvs1
               |  _ -> fvs1
               in (fncs1, fvs', (t, SCall(s1, exprs')))
+   | SAssign(s1, e1) ->
+              let (fncs1, fvs1, e1') = dfs_expr fncs env e1 in
+              (fncs1, fvs1, (t, SAssign(s1, e1')))
+   |SArrayAssign(s1, idx, e1) -> 
+              let (fncs1, fvs1, e1') = dfs_expr fncs env e1 in
+              (fncs1, fvs1, (t, SArrayAssign(s1, idx, e1')))
    | SId(s1) ->
               let fv =if (StringMap.mem s1 env.variables ||
                           StringMap.mem s1 built_in_decls)
@@ -134,58 +156,120 @@
     | [] -> (fncs, [], exprs)
  and build_closure  ?fname fncs env fexpr =
          let add_bind m (t, id) = StringMap.add id t m in
-         let vars = List.fold_left add_bind StringMap.empty fexpr.sformals in
+         let vars = List.fold_left add_bind StringMap.empty (to_formals fexpr.sformals) in
          let name = match fname with Some x -> x
                                    | None -> ""
          in
          let func_t = {
             typ_t = fexpr.srtyp;
-            sformals_t = List.map fst fexpr.sformals;
+            formals_t = List.map fst (to_formals fexpr.sformals);
          }
          in
+         let t = SFunction(func_t)
+         in
          let vars_rec = match name with "" -> vars
-                                      | _  -> StringMap.add name SFunction(func_t) vars
+                                      | _  -> StringMap.add name t vars
          in
          let new_env = { variables = vars_rec;
                          parent = Some env } in
          let (fncs', fvs, _, body') = dfs_stmts fncs new_env fexpr.sbody in
          let clsr = {
             ind = List.length fncs';
-            free_vars = fvs;
+            fvs = fvs;
          }
          in
          let new_fnc = {
-            fname = name;
-            fvs = fvs;
+            name = name;
+            free_vars = fvs;
             styp = fexpr.srtyp;
-            sformals = fexpr.sformals;
+            sformals =  (to_formals fexpr.sformals);
             sbody = body';
          }
         in
          (new_fnc :: fncs', fvs, (SFunction(func_t), clsr))
- let lift stmts =
-         let (fncs, _, _, stmts') = dfs_stmts [] { variables = StringMap.empty ;
-         parent = None } stmts in
+(*Need to check if the gloabls and functions have correct type to avoid type casting*)
+ let lift (globals, functions) =
+         let is_global = function    
+           SVarDef(var) -> var
+         | SFuncDef(f) -> raise (Failure ("Global should not be function def"))
+         in 
+         let is_func = function    
+          SVarDef(var) -> raise (Failure ("Function should not be function def"))
+        | SFuncDef(f) -> f
+        in
+        let checked_global = List.map is_global globals
+        in 
+        let checked_func = List.map is_func functions
+          in
+         let add_symbol m var = 
+           match var with
+             SDecl (typ, name) -> StringMap.add name typ m
+           | SInit(typ, sassign) ->  StringMap.add (fst sassign) typ m
+         in
+          let symbols = List.fold_left add_symbol
+           (StringMap.empty) checked_global
+         in
+         let main_func = List.find (fun f -> f.sfname = "main") checked_func
+         in
+         let (fncs, _, _, stmts') = dfs_stmts [] { variables = symbols ;
+         parent = None } main_func.sbody in
          let main_fnc = {
                  name = "main";
-                 fvs = [] ;
+                 free_vars = [] ;
                  styp = Int;
                  sformals = [];
                  sbody = stmts';
          } in
          let named_fncs = List.mapi (fun i fnc -> ("f" ^ string_of_int i, fnc))
          (List.rev fncs)
-         in (("main", main_fnc) ::  named_fncs)
+         in (checked_global, ("main", main_fnc) ::  named_fncs)
+
+
  (* Pretty-printing function *)
- and string_of_lfexpr (name, fexpr) =
-     "FUNCTION " ^ name ^ "-" ^ fexpr.name ^ " "
-   ^ string_of_typ (typ_of_styp fexpr.styp) ^ " "
-   ^ "( (fvs: " ^ String.concat ", " (List.map string_of_sformal fexpr.fvs) ^ "), ("
-   ^ String.concat ", " (List.map string_of_sformal fexpr.sformals)
-   ^ ") )\n{\n"
-   ^ String.concat "" (List.map string_of_sstmt fexpr.sbody)
-   ^ "}\n"
- let string_of_last fncs =
-         "PROGRAM:\n"
-       ^ String.concat "-----\n" (List.map string_of_lfexpr fncs)
- 
+let rec string_of_sexpr (t, e) =
+  "(" ^ string_of_typ t ^ " : " ^ (match e with
+        SLiteral(l) -> string_of_int l
+      | SFloatLit(l) -> string_of_float l
+      | SBoolLit(true) -> "true"
+      | SBoolLit(false) -> "false"
+      | SArrayLit(l) -> "{" ^ (String.concat ", " (List.map string_of_sexpr l)) ^ "}"
+      | SId(s) -> s
+      | SArrayAccess(var, idx) -> var ^ "[" ^ (string_of_int idx) ^ "]"
+      | SStringLit(s) -> "\"" ^ s ^ "\""
+      | SBinop(e1, o, e2) ->
+        string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
+      | SAssign(sassign) -> string_of_sassign sassign
+      | SArrayAssign(v, i, e) -> v ^ "[" ^ (string_of_int i) ^ "]" ^ " = " ^ string_of_sexpr e
+      | SCall(f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
+      | SFuncExpr(expr) -> raise (Failure ("Function expression is not implemented in lambda"))
+      | SClosure(clsr) -> "f" ^ (string_of_int (clsr.ind)) ^ "(" ^ String.concat ", " (List.map string_of_bind clsr.fvs) ^ ")"  
+       ) ^ ")"
+and string_of_sassign (string, sexpr) = string ^ " "^ string_of_sexpr sexpr
+and string_of_bind (typ, string) = string_of_typ typ ^ " " ^  string
+and string_of_svdecl = function
+    SDecl (typ, string) -> string_of_typ typ ^ " " ^ string
+  | SInit (typ, sassign) -> string_of_typ typ ^ " " ^ string_of_sassign sassign
+and string_of_sstmt = function
+    SBlock(stmts) ->
+    "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
+  | SExpr(expr) -> string_of_sexpr expr ^ ";\n"
+  | SReturn(expr) -> "return " ^ string_of_sexpr expr ^ ";\n"
+  | SIf(e, s1, s2) ->  "if (" ^ string_of_sexpr e ^ ")\n" ^
+                       string_of_sstmt s1 ^ "else\n" ^ string_of_sstmt s2
+  | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
+  | SLocalVarDef l -> string_of_svdecl l ^ ";\n"
+
+and string_of_sfdecl (name, fdecl) =
+  string_of_typ fdecl.styp ^ " " ^
+  name ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.sformals) ^
+  ")\n" ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.free_vars) ^ ")" ^ "{\n" ^
+  String.concat "" (List.map string_of_sstmt fdecl.sbody) ^
+  "}\n"
+
+let string_of_lprogram (defs) =
+  "\n\nParsed program: \n\n" ^
+  String.concat "" (List.map string_of_svdecl (fst defs)) ^ "\n"
+  ^ String.concat "" (List.map string_of_sfdecl (snd defs)) ^ "\n"
+
+
+

@@ -2,24 +2,33 @@
 
 type op = Add | Sub | Mul | Div | Mod | Equal | Neq | Less | And | Or
 
-type typ = Int | Bool | String | Array of typ * int | Any | List | Function | SFunction of sfunc_t | Void
+
+
+type typ = Int | Void | Float | Bool | String | Array of typ * int | Any | List | Function | SFunction of sfunc_t 
 and sfunc_t = {
     typ_t : typ;
-    sformals_t : typ list;
+    formals_t : typ list;
 }
+
+type bind = typ * string
+
 type expr =
     Literal of int
+  | FloatLit of float
   | BoolLit of bool
   | Id of string
   | ArrayLit of expr list
   | ArrayAccess of string * int
   | StringLit of string
   | Binop of expr * op * expr
-  | Assign of string * expr
+  | Assign of assign
   | ArrayAssign of string * int * expr
   (* function call *)
   | Call of string * expr list
   | FuncExpr of func_def
+
+and assign = string * expr
+
 and stmt =
     Block of stmt list
   | Expr of expr
@@ -27,21 +36,24 @@ and stmt =
   | While of expr * stmt
   (* return *)
   | Return of expr
+  | LocalVarDef of var_def
 
+and def = 
+  | VarDef of var_def
+  | FuncDef of func_def
 (* int x: name binding *)
-and bind = typ * string 
-
+and var_def = 
+  | Decl of typ * string
+  | Init of typ * assign
 (* func_def: ret_typ fname formals locals body *)
 and func_def = {
   rtyp: typ;
   fname: string;
-  formals: bind list;
-  locals: bind list;
+  formals: var_def list;
   body: stmt list;
 }
 
-
-type program = bind list * func_def list
+type program = def list
 
 (* Pretty-printing functions *)
 let string_of_op = function
@@ -58,6 +70,7 @@ let string_of_op = function
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
+  | FloatLit(l) -> string_of_float l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | ArrayLit(l) -> "{" ^ (String.concat ", " (List.map string_of_expr l)) ^ "}"
@@ -66,11 +79,29 @@ let rec string_of_expr = function
   | StringLit(s) -> "\"" ^ s ^ "\""
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
-  | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | Assign(assign) -> string_of_assign assign
   | ArrayAssign(v, i, e) -> v ^ "[" ^ (string_of_int i) ^ "]" ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | FuncExpr(fdef) -> string_of_fdecl fdef
+
+and string_of_assign (string, expr) = string ^ " "^ string_of_expr expr
+
+and string_of_typ = function
+    Int -> "int"
+  | Void -> "void"
+  | Float -> "float"
+  | Bool -> "bool"
+  | String -> "string"
+  | Array(t, len) -> (string_of_typ t) ^ "[" ^ (string_of_int len) ^ "]"
+  | Any -> "any"
+  | List -> "list"
+  | Function -> "func"
+  | SFunction t -> "sfunc"
+
+and string_of_vdecl = function
+    Decl(t, id) -> string_of_typ t ^ " " ^ id ^ ";\n"
+  | Init (t, assign) -> string_of_typ t  ^ " " ^ string_of_assign assign ^ ";\n"
 
 and string_of_stmt = function
     Block(stmts) ->
@@ -80,27 +111,23 @@ and string_of_stmt = function
   | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
                       string_of_stmt s1 ^ "else\n" ^ string_of_stmt s2
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
-
-and string_of_typ = function
-    Int -> "int"
-  | Bool -> "bool"
-  | String -> "string"
-  | Array(t, len) -> (string_of_typ t) ^ "[" ^ (string_of_int len) ^ "]"
-  | Any -> "any"
-  | List -> "list"
-  | Function -> "func"
-
-and string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+  | LocalVarDef(l) -> string_of_vdecl l
 
 and string_of_fdecl fdecl = 
   string_of_typ fdecl.rtyp ^ " " ^
-  fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
+  fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_vdecl fdecl.formals ) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl fdecl.locals) ^
-  String.concat "" (List.map string_of_stmt fdecl.body) ^ 
+  String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
-let string_of_program (vars, funcs) =
+let string_of_def = function
+    VarDef(var_def) -> string_of_vdecl var_def
+  | FuncDef(func_def) -> string_of_fdecl func_def
+
+let string_of_program (defs) =
   "\n\nParsed program: \n\n" ^
-  String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl funcs)
+  String.concat "" (List.map string_of_def defs) ^ "\n"
+
+  let extract_var = function
+      Decl (typ, string) -> (typ, string)
+    | Init(typ, assign) -> (typ, fst assign)

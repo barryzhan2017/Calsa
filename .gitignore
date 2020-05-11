@@ -1,2 +1,7 @@
 _build
 microc.native
+.DS_Store
+*.out
+*.o
+*.s
+.merlin

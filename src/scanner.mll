@@ -4,6 +4,7 @@
 
 let digit = ['0'-'9']
 let digits = digit+
+let float = digits '.' digits
 
 let lower_case = ['a'-'z'] 
 let upper_case = ['A'-'Z']
@@ -38,18 +39,22 @@ rule token = parse
 | '<'      { LT }
 | "&&"     { AND }
 | "||"     { OR }
+| "."      { DOT }
 | "if"     { IF }
 | "else"   { ELSE }
 | "while"  { WHILE }
 (* RETURN *)
 | "return" { RETURN }
 | "int"    { INT }
+| "float"  { FLOAT }
 | "bool"   { BOOL }
-| "string"   { STRING }
+| "void"   { VOID }
+| "string" { STRING }
 | "List"   { LIST }
 | "true"   { BOOLLIT(true) }
 | "false"  { BOOLLIT(false) }
 | "func"    { FUNCTION }
+| float as lem { FLOATLIT(float_of_string lem) }
 | digits as lem  { INTLIT(int_of_string lem) }
 | id as lem { ID(lem) }
 | '\"' { STRINGLIT ("\"" ^ (string (Buffer.create 128) lexbuf) ^ "\"") }

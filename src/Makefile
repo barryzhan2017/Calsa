@@ -1,4 +1,5 @@
 CC=gcc
+CXX=g++
 CFLAGS= -g -Wall
 LDFLAGS= -g
 
@@ -11,7 +12,7 @@ liblist.a: list.o
 	ar -crs liblist.a list.o
 	ranlib liblist.a
 
-list.o: list.c
+list.o: list.cpp
 
 .PHONY: clean
 clean:
