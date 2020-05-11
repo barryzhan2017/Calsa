@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 using namespace std;
 
@@ -53,8 +54,47 @@ extern "C"{
         } else{
             l->tail->next = n;
             l->tail = l->tail->next;
-            l->length += 1;
+            l->length++;
         }
+        return true;
+    };
+
+    int get(List* l, int idx){
+        assert(idx < l->length);
+        int i = 0;
+        ListNode* p = l->head;
+        while (p && i < idx){
+            p = p->next;
+            i++;
+        }
+        return p->val;
+    };
+
+    bool removeList(List* l, int idx){
+        if (idx >= l->length){
+            return false;
+        }
+        ListNode* tmp;
+        if (idx == 0){
+            tmp = l->head;
+            l->head = l->head->next;
+        }
+        else{
+            int i = 0;
+            ListNode* p = l->head;
+            while (p && i < idx - 1){
+                p = p->next;
+                i++;
+            }
+            if (p->next->next){
+                tmp = p->next;
+                p->next = p->next->next;
+            } else{
+                tmp = p;
+                p->next = NULL;
+            }
+        }
+        free(tmp);
         return true;
     }
 }

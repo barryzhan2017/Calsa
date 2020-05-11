@@ -82,6 +82,11 @@ let translate (defs) =
 
   let printList_func : L.llvalue = L.declare_function "print" initList_t the_module in
 
+  let getList_t : L.lltype = L.function_type i32_t [| L.pointer_type struct_list_t; i32_t |] in
+  let getList_func : L.llvalue = L.declare_function "get" getList_t the_module in
+
+  let removeList_func : L.llvalue = L.declare_function "removeList" add_t the_module in
+
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
   let function_decls : (L.llvalue * sfunc_def) StringMap.t =
@@ -199,6 +204,12 @@ let translate (defs) =
         L.build_call add_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
           (*Array.of_list (List.map (build_expr builder local_vars global_vars) args)*)
           "add" builder
+      | SCall ("get", [(t1, SId s); (t2, e2)]) ->
+          L.build_call getList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
+            "get" builder
+      | SCall ("remove", [(t1, SId s); (t2, e2)]) ->
+          L.build_call removeList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
+            "remove" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
         let llargs = List.rev (List.map (build_expr builder local_vars global_vars) (List.rev args)) in
