@@ -162,7 +162,7 @@ let check (defs) =
         rtyp = return_type;
         fname = function_name;
         formals = List.map (fun t -> Decl (t, "x")) param_type;
-        locals = []; body = [] } map
+        body = [] } map
     in List.fold_left add_bind StringMap.empty [("print", [Any], Int); ("add", [List; Int], Bool)] in
 
   (* Add function name to symbol table *)
@@ -202,8 +202,8 @@ let check (defs) =
 
     (* let rec check_stmt_list ( symbols:'a StringMap.t ref ) =function
         [] -> []
-      | Block sl :: sl'  -> check_stmt_list symbols (sl @ sl') (* Flatten blocks *)
-      | s :: sl -> (check_stmt symbols s):: check_stmt_list symbols sl *)
+       | Block sl :: sl'  -> check_stmt_list symbols (sl @ sl') (* Flatten blocks *)
+       | s :: sl -> (check_stmt symbols s):: check_stmt_list symbols sl *)
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt symbols = function
       (* A block is correct if each statement is correct and nothing
@@ -222,7 +222,7 @@ let check (defs) =
         else raise (
             Failure ("return gives " ^ string_of_typ t ^ " expected " ^
                      string_of_typ func.rtyp ^ " in " ^ string_of_expr e))
-      
+
 
     in (* body of check_func *)
     { srtyp = func.rtyp;
