@@ -47,6 +47,9 @@ let translate (defs) =
 
   let struct_listNode_t : L.lltype =
     L.named_struct_type context "ListNode" in
+  let _ = 
+    L.struct_set_body struct_listNode_t
+      [| i32_t; L.pointer_type struct_listNode_t |] false in
   let struct_list_t : L.lltype =
     L.named_struct_type context "List" in
   let _ =
@@ -187,13 +190,13 @@ let translate (defs) =
         if t = List then
           match e with
           | SId s->
-            L.build_call printList_func [| L.build_bitcast (L.build_struct_gep (lookup s local_vars global_vars) 0 "" builder) (L.pointer_type struct_list_t) "" builder |] "" builder
+            L.build_call printList_func [| lookup s local_vars global_vars |] "" builder
           | _ ->raise (Failure"Print a list using its name")
         else
           L.build_call printf_func [| format_str t; (build_expr builder local_vars global_vars (t, e)) |]
             "printf" builder
       | SCall ("add", [(t1, SId s); (t2, e2)]) ->
-        L.build_call add_func [| L.build_bitcast (L.build_struct_gep (lookup s local_vars global_vars) 0 "" builder) (L.pointer_type struct_list_t) "" builder; (build_expr builder local_vars global_vars (t2, e2)) |]
+        L.build_call add_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
           (*Array.of_list (List.map (build_expr builder local_vars global_vars) args)*)
           "add" builder
       | SCall (f, args) ->
