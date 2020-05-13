@@ -212,20 +212,20 @@ let translate (defs) =
           (*Array.of_list (List.map (build_expr builder local_vars global_vars) args)*)
           "add" builder
       | SCall ("get", [(t1, SId s); (t2, e2)]) ->
-          L.build_call getList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
-            "get" builder
+        L.build_call getList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
+          "get" builder
       | SCall ("remove", [(t1, SId s); (t2, e2)]) ->
-          L.build_call removeList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
-            "remove" builder
+        L.build_call removeList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
+          "remove" builder
       | SCall ("set", [(t1, SId s); (t2, e2); (t3, e3)]) ->
-          L.build_call setList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
-            "remove" builder
+        L.build_call setList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
+          "remove" builder
       | SCall ("insert", [(t1, SId s); (t2, e2); (t3, e3)]) ->
-          L.build_call insertList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
-            "remove" builder
+        L.build_call insertList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
+          "remove" builder
       | SCall ("size", [(t1, SId s)]) ->
-          L.build_call sizeofList_func [| lookup s local_vars global_vars |]
-            "sizeofList" builder
+        L.build_call sizeofList_func [| lookup s local_vars global_vars |]
+          "sizeofList" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
         let llargs = List.rev (List.map (build_expr builder local_vars global_vars) (List.rev args)) in
@@ -262,26 +262,6 @@ let translate (defs) =
       List.fold_left2 add_formal (ref StringMap.empty) fdecl.sformals
         (Array.to_list (L.params the_function)) in
 
-    (* Allocate space for any locally declared variables and add the
-      * resulting registers to our map *)
-    let add_local m local =
-      match local with
-      | SDecl(t, n)->
-        let ty = ltype_of_typ t in
-        let local_var = L.build_alloca ty n builder in
-        let _ = 
-          (
-            match t with
-            | A.List -> L.build_call initList_func [| local_var |] "" builder;
-            | _ -> local_var
-          )
-        in m:=StringMap.add n local_var !m;m
-      | SInit(t, assign)->
-        let local_var = L.build_alloca (ltype_of_typ t) (fst assign) builder in
-        let e' = build_expr builder m global_vars (snd assign) in
-        ignore(L.build_store e' local_var builder);
-        m:=StringMap.add (fst assign) local_var !m;m
-    in
 
 
     (* LLVM insists each basic block end with exactly one "terminator"
@@ -331,7 +311,27 @@ let translate (defs) =
         ignore(L.build_cond_br bool_val body_bb end_bb while_builder);
         L.builder_at_end context end_bb
 
-      | SLocalVarDef(local) -> ignore(add_local local_vars local); builder
+      | SLocalVarDef(local) -> 
+        (* Allocate space for any locally declared variables and add the
+         * resulting registers to our map *)
+        let add_local m local =
+          match local with
+          | SDecl(t, n)->
+            let local_var = L.build_alloca (ltype_of_typ t) n builder in
+            let _ = 
+              (
+                match t with
+                | A.List -> L.build_call initList_func [| local_var |] "" builder;
+                | _ -> local_var
+              )
+            in m:=StringMap.add n local_var !m
+          | SInit(t, assign)->
+            let local_var = L.build_alloca (ltype_of_typ t) (fst assign) builder in
+            let e' = build_expr builder m global_vars (snd assign) in
+            ignore(L.build_store e' local_var builder);
+            m:=StringMap.add (fst assign) local_var !m in
+
+        add_local local_vars local; builder
 
     in
     (* Build the code for each statement in the function *)
