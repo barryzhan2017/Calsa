@@ -22,10 +22,11 @@ type lfexpr = {
      sformals : bind list;
      sbody : sstmt list;
  }
- 
+
+ let empty_func t = ({ typ_t = t; formals_t = [] }) 
+ let concrete_func t f = ({ typ_t = t; formals_t = List.map fst (to_formals f) }) 
 
  let built_in_decls =
-     let empty_func t = ({ typ_t = t; formals_t = [] }) in
      let add_default map (name, ty) = StringMap.add name (SFunction ty) map
      in List.fold_left add_default StringMap.empty [("print", empty_func Int); ("add", empty_func Bool)]
 
@@ -117,7 +118,7 @@ type lfexpr = {
    | SAssign(s1, e1) ->
               let (fncs1, fvs1, e1') = dfs_expr fncs env e1 in
               (fncs1, fvs1, (t, SAssign(s1, e1')))
-   |SArrayAssign(s1, idx, e1) -> 
+   | SArrayAssign(s1, idx, e1) -> 
               let (fncs1, fvs1, e1') = dfs_expr fncs env e1 in
               (fncs1, fvs1, (t, SArrayAssign(s1, idx, e1')))
    | SId(s1) ->
@@ -201,13 +202,21 @@ type lfexpr = {
         in 
         let checked_func = List.map is_func functions
           in
-         let add_symbol m var = 
-           match var with
+         let add_symbol m def = 
+          match def with 
+            SVarDef(var) -> 
+            (match var with
              SDecl (typ, name) -> StringMap.add name typ m
-           | SInit(typ, sassign) ->  StringMap.add (fst sassign) typ m
+           | SInit(typ, sassign) ->  StringMap.add (fst sassign) typ m)
+          | SFuncDef(func) -> let f = concrete_func func.srtyp func.sformals 
+          in StringMap.add func.sfname (SFunction f) m
          in
+         (* add all non-main function definition to symbol table*)
           let symbols = List.fold_left add_symbol
-           (StringMap.empty) checked_global
+           (StringMap.empty) (List.filter (fun def -> match def with 
+           SVarDef(var) -> true
+          | SFuncDef(f) -> f.sfname <> "main"
+           ) globals@functions) 
          in
          let main_func = List.find (fun f -> f.sfname = "main") checked_func
          in
@@ -247,8 +256,8 @@ let rec string_of_sexpr (t, e) =
 and string_of_sassign (string, sexpr) = string ^ " "^ string_of_sexpr sexpr
 and string_of_bind (typ, string) = string_of_typ typ ^ " " ^  string
 and string_of_svdecl = function
-    SDecl (typ, string) -> string_of_typ typ ^ " " ^ string
-  | SInit (typ, sassign) -> string_of_typ typ ^ " " ^ string_of_sassign sassign
+    SDecl (typ, string) -> string_of_typ typ ^ " " ^ string ^ "\n"
+  | SInit (typ, sassign) -> string_of_typ typ ^ " " ^ string_of_sassign sassign ^ "\n"
 and string_of_sstmt = function
     SBlock(stmts) ->
     "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
