@@ -95,7 +95,55 @@ extern "C"{
             }
         }
         free(tmp);
+        l->length--;
         return true;
+    };
+
+    bool set(List* l, int idx, int val){
+        if (idx >= l->length){
+            return false;
+        }
+        int i = 0;
+        ListNode* p = l->head;
+        while (p && i < idx){
+            p = p->next;
+            i++;
+        }
+        p->val = val;
+        return true;
+    };
+
+    bool insert(List* l, int idx, int val){
+        if (idx >= l->length){
+            return false;
+        }
+        if (idx == 0){
+            ListNode* n = (ListNode*) malloc(sizeof(ListNode));
+            n->val = val;
+            n->next = l->head;
+            l->head = n;
+            l->length++;
+            return true;
+        }
+        else{
+            int i = 0;
+            ListNode* p = l->head;
+            while (p && i < idx - 1){
+                p = p->next;
+                i++;
+            }
+            ListNode* q = p->next;
+            ListNode* n = (ListNode*) malloc(sizeof(ListNode));
+            n->val = val; n->next = NULL;
+            p->next = n;
+            n->next = q;
+            l->length++;
+            return true;
+        }
+    };
+
+    int sizeofList(List* l){
+        return l->length;
     }
 }
 

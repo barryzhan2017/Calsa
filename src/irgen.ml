@@ -87,6 +87,13 @@ let translate (defs) =
 
   let removeList_func : L.llvalue = L.declare_function "removeList" add_t the_module in
 
+  let setList_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_list_t; i32_t; i32_t |] in
+  let setList_func : L.llvalue = L.declare_function "set" setList_t the_module in
+  let insertList_func : L.llvalue = L.declare_function "insert" setList_t the_module in
+
+  let sizeofList_t : L.lltype = L.function_type i32_t [| L.pointer_type struct_list_t |] in
+  let sizeofList_func : L.llvalue = L.declare_function "sizeofList" sizeofList_t the_module in
+
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
   let function_decls : (L.llvalue * sfunc_def) StringMap.t =
@@ -210,6 +217,15 @@ let translate (defs) =
       | SCall ("remove", [(t1, SId s); (t2, e2)]) ->
           L.build_call removeList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
             "remove" builder
+      | SCall ("set", [(t1, SId s); (t2, e2); (t3, e3)]) ->
+          L.build_call setList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
+            "remove" builder
+      | SCall ("insert", [(t1, SId s); (t2, e2); (t3, e3)]) ->
+          L.build_call insertList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
+            "remove" builder
+      | SCall ("size", [(t1, SId s)]) ->
+          L.build_call sizeofList_func [| lookup s local_vars global_vars |]
+            "sizeofList" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
         let llargs = List.rev (List.map (build_expr builder local_vars global_vars) (List.rev args)) in
