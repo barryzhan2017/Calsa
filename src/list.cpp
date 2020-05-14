@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <limits.h>
 
 using namespace std;
 
@@ -42,6 +43,17 @@ extern "C"{
             printf("%d\n", p->val);
         }
     };
+
+    bool find(List* l, int val) {
+        ListNode* p = l->head;
+        while(p != l->tail){
+            if (p->val == val) {
+                return true;
+            } 
+            p = p->next;
+        }
+        return false;
+    }
 
     bool add(List* l, int i) {
         ListNode* n = (ListNode*) malloc(sizeof(ListNode));
@@ -147,5 +159,94 @@ extern "C"{
     }
 }
 
+// Definition for hash table
+#define TABLE_SIZE 7919
+static int hashFunc(int key) {
+    return key >= 0 ? key % TABLE_SIZE: (-key) % TABLE_SIZE;
+}
 
+struct HashtableNode {
+    int key, value;
+    struct HashtableNode *next;
+    HashtableNode() {
+        key = 0;
+        value = 0;
+        next = NULL;
+    }
+};
+struct Hashtable {
+    int size;
+    struct HashtableNode **data;
+    Hashtable() {
+        data = NULL;
+        size = 0;
+    }
+};
 
+extern "C" {
+    void initHashtable(struct Hashtable *ht) {
+        ht->data = (struct HashtableNode**) malloc(TABLE_SIZE * sizeof(struct HashtableNode*));
+        int i;
+        for (i = 0; i < TABLE_SIZE; ++i) {
+            ht->data[i] = NULL;
+        }
+    }
+    bool existK(struct Hashtable* ht, int key) {
+        int pos = hashFunc(key);
+        struct HashtableNode *p = ht->data[pos];
+        while (p) {
+            if (p->key == key) {
+                return true;
+            }
+        }
+        return false;
+    }
+    int getV(struct Hashtable* ht, int key) {
+        int pos = hashFunc(key);
+        struct HashtableNode *p = ht->data[pos];
+        while (p) {
+            if (p->key == key) {
+                return p->value;
+            }
+            p = p->next;
+        }
+        return INT_MIN;
+    }
+    void setKV(struct Hashtable* ht, int key, int val) {
+        int pos = hashFunc(key);
+        struct HashtableNode *p = ht->data[pos];
+        if (!p) { // if row for that table is empty
+            ht->data[pos] = (struct HashtableNode*) malloc(sizeof(struct HashtableNode));
+            ht->data[pos]->value = val;
+            ht->data[pos]->key = key;
+            ht->size++;
+        }
+        else {
+            while (p) {  // check if key already exist
+                if (p->key == key) {
+                    p->value = val;
+                    return;
+                }
+                p = p->next;
+            }
+            // if key does not exist, add a new node
+            struct HashtableNode* node = (struct HashtableNode*) malloc(sizeof(struct HashtableNode));
+            node->key = key;
+            node->value = val;
+            node->next = ht->data[pos];
+            ht->data[pos]->next = node;
+            ht->size++;
+        }
+        
+    }
+    void printHashtable(struct Hashtable* ht) {
+        int i;
+        for (i = 0; i < TABLE_SIZE; ++i) {
+            struct HashtableNode *p = ht->data[i];
+            while (p) {
+                printf("%d->%d ", p->key, p->value);
+                p = p->next;
+            }
+        }
+    }
+}

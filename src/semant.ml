@@ -163,7 +163,10 @@ let check (defs) =
         fname = function_name;
         formals = List.map (fun t -> Decl (t, "x")) param_type;
         body = [] } map
-    in List.fold_left add_bind StringMap.empty [("print", [Any], Int); ("add", [List; Int], Bool); ("get", [List; Int], Int); ("remove", [List; Int], Bool); ("set", [List; Int; Int], Bool); ("insert", [List; Int; Int], Bool); ("size", [List], Int)] in
+    in List.fold_left add_bind StringMap.empty 
+      [("print", [Any], Int); 
+      ("add", [List; Int], Bool); ("get", [List; Int], Int); ("remove", [List; Int], Bool); ("set", [List; Int; Int], Bool); ("insert", [List; Int; Int], Bool); ("size", [List], Int); 
+      ("get", [Hashtable; Int], Int); ("set", [Hashtable; Int; Int], Void)] in
 
   (* Add function name to symbol table *)
   let add_func map fd =

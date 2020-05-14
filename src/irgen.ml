@@ -56,6 +56,17 @@ let translate (defs) =
     L.struct_set_body struct_list_t
       [| L.pointer_type struct_listNode_t; L.pointer_type struct_listNode_t; i32_t |] false in
 
+  let struct_hashtableNode_t : L.lltype = 
+    L.named_struct_type context "HashtableNode" in
+  let _ = 
+    L.struct_set_body struct_hashtableNode_t
+      [| i32_t; i32_t; L.pointer_type struct_hashtableNode_t |] false in
+  let struct_hashtable_t : L.lltype = 
+    L.named_struct_type context "Hashtable" in
+  let _ =
+    L.struct_set_body struct_hashtable_t
+      [| i32_t; L.pointer_type (L.pointer_type struct_hashtableNode_t) |] false in
+
   (* Return the LLVM type for a MicroC type *)
   let rec ltype_of_typ = function
       A.Int   -> i32_t
@@ -65,6 +76,7 @@ let translate (defs) =
     | A.String -> string_t
     | A.Array(t, len) -> L.array_type (ltype_of_typ t) len
     | A.List -> struct_list_t
+    | A.Hashtable -> struct_hashtable_t
     | A.Any -> raise (Failure ("Not implemented yet!"))
   in
 
@@ -74,6 +86,7 @@ let translate (defs) =
     L.declare_function "printf" printf_t the_module in
 
   (* Declare each C++ function *)
+  (* C++ function for list *)
   let add_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_list_t; i32_t |] in
   let add_func : L.llvalue = L.declare_function "add" add_t the_module in
 
@@ -93,6 +106,16 @@ let translate (defs) =
 
   let sizeofList_t : L.lltype = L.function_type i32_t [| L.pointer_type struct_list_t |] in
   let sizeofList_func : L.llvalue = L.declare_function "sizeofList" sizeofList_t the_module in
+
+  (* C++ function for hashtable *)
+  let initHashtable_t : L.lltype = L.function_type void_t [| L.pointer_type struct_hashtable_t |] in
+  let initHashtable_func : L.llvalue = L.declare_function "initHashtable" initHashtable_t the_module in
+
+  let getHashtable_t : L.lltype = L.function_type i32_t [| L.pointer_type struct_hashtable_t; i32_t |] in
+  let getHashtable_func : L.llvalue = L.declare_function "getV" getHashtable_t the_module in
+
+  let setHashtable_t : L.lltype = L.function_type void_t [| L.pointer_type struct_hashtable_t; i32_t; i32_t |] in
+  let setHashtable_func : L.llvalue = L.declare_function "setKV" setHashtable_t the_module in
 
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
@@ -117,6 +140,7 @@ let translate (defs) =
       | A.String -> "%s"
       | A.Any -> raise (Failure ("Not implemented yet!"))
       | A.List -> raise (Failure ("Not implemented yet!")) 
+      | A.Hashtable -> raise (Failure ("Not implemented yet!")) 
       | A.Void ->  raise (Failure ("Not implemented yet!")) 
       | A.Array(t, len) -> 
         let format =  Array.make len (format_type t) in 
@@ -212,14 +236,26 @@ let translate (defs) =
           (*Array.of_list (List.map (build_expr builder local_vars global_vars) args)*)
           "add" builder
       | SCall ("get", [(t1, SId s); (t2, e2)]) ->
-        L.build_call getList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
-          "get" builder
+        if t1 = List then
+          L.build_call getList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
+            "get" builder
+        else if t1 = Hashtable then
+          L.build_call getHashtable_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
+            "get" builder
+        else
+          raise (Failure "get used on unsupported type")
       | SCall ("remove", [(t1, SId s); (t2, e2)]) ->
         L.build_call removeList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
           "remove" builder
       | SCall ("set", [(t1, SId s); (t2, e2); (t3, e3)]) ->
-        L.build_call setList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
-          "remove" builder
+        if t1 = List then
+          L.build_call setList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
+            "remove" builder
+        else if t1 = Hashtable then
+          L.build_call setHashtable_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
+            "" builder
+        else
+          raise (Failure "set used on unsupported type")
       | SCall ("insert", [(t1, SId s); (t2, e2); (t3, e3)]) ->
         L.build_call insertList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
           "remove" builder
@@ -322,6 +358,7 @@ let translate (defs) =
               (
                 match t with
                 | A.List -> L.build_call initList_func [| local_var |] "" builder;
+                | A.Hashtable -> L.build_call initHashtable_func [| local_var |] "" builder;
                 | _ -> local_var
               )
             in m:=StringMap.add n local_var !m
