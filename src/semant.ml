@@ -159,11 +159,20 @@ let check (defs) =
   (* Collect function declarations for built-in functions: no bodies *)
   let built_in_decls = 
     let add_bind map (function_name, param_type, return_type) = StringMap.add function_name {
+<<<<<<< Updated upstream
         rtyp = return_type;
         fname = function_name;
         formals = List.map (fun t -> Decl (t, "x")) param_type;
         body = [] } map
     in List.fold_left add_bind StringMap.empty [("print", [Any], Int); ("add", [List; Int], Bool); ("get", [List; Int], Int); ("remove", [List; Int], Bool); ("set", [List; Int; Int], Bool); ("insert", [List; Int; Int], Bool); ("size", [List], Int)] in
+=======
+      rtyp = return_type;
+      fname = function_name;
+      formals = List.map (fun t -> (t, "x")) param_type;
+      locals = []; body = [] } map
+    in List.fold_left add_bind StringMap.empty [("print", [Any], Int); ("add", [List], Int); 
+      ("list_append", [List; Int], Void)] in
+>>>>>>> Stashed changes
 
   (* Add function name to symbol table *)
   let add_func map fd =

@@ -2,7 +2,7 @@
 
 type op = Add | Sub | Mul | Div | Mod | Equal | Neq | Less | And | Or
 
-type typ = Int | Void | Float | Bool | String | Array of typ * int | Any | List
+type typ = Int | Float | Bool | String | Array of typ * int | Any | List | Void | Pointer of typ
 
 type expr =
     Literal of int
@@ -86,6 +86,8 @@ let rec string_of_typ = function
   | Array(t, len) -> (string_of_typ t) ^ "[" ^ (string_of_int len) ^ "]"
   | Any -> "any"
   | List -> "list"
+  | Void -> "void"
+  | Pointer(t) -> (string_of_typ t) ^ "*"
 
 let string_of_vdecl = function
     Decl(t, id) -> string_of_typ t ^ " " ^ id ^ ";\n"

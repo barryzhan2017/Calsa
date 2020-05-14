@@ -41,8 +41,10 @@ let translate (defs) =
   and float_t    = L.double_type context
   and i1_t       = L.i1_type     context 
   and string_t   = L.pointer_type (L.i8_type context)
+  and void_t     = L.void_type   context
   in
 
+<<<<<<< Updated upstream
   (* Declare struct StringList *)
 
   let struct_listNode_t : L.lltype =
@@ -51,10 +53,30 @@ let translate (defs) =
     L.struct_set_body struct_listNode_t
       [| i32_t; L.pointer_type struct_listNode_t |] false in
   let struct_list_t : L.lltype =
+=======
+    (* Declare struct IntList *)
+  let list_node_st : L.lltype = 
+    L.named_struct_type context "ListNode" in
+  let list_node_t : L.lltype = 
+    L.pointer_type (list_node_st) in
+  let _ = 
+    L.struct_set_body list_node_st
+    [| i32_t ; list_node_t |] false in
+
+    (* Distinguish struct type and pointer type *)
+  let list_st : L.lltype =
+>>>>>>> Stashed changes
     L.named_struct_type context "List" in
+  let list_t : L.lltype = 
+    L.pointer_type list_st in
   let _ =
+<<<<<<< Updated upstream
     L.struct_set_body struct_list_t
       [| L.pointer_type struct_listNode_t; L.pointer_type struct_listNode_t; i32_t |] false in
+=======
+    L.struct_set_body list_st
+    [| i32_t ; list_node_t; list_node_t |] false in
+>>>>>>> Stashed changes
 
   (* Return the LLVM type for a MicroC type *)
   let rec ltype_of_typ = function
@@ -64,8 +86,14 @@ let translate (defs) =
     | A.Bool  -> i1_t
     | A.String -> string_t
     | A.Array(t, len) -> L.array_type (ltype_of_typ t) len
+<<<<<<< Updated upstream
     | A.List -> struct_list_t
+=======
+    | A.List  -> list_t
+>>>>>>> Stashed changes
     | A.Any -> raise (Failure ("Not implemented yet!"))
+    | A.Void -> void_t
+    | A.Pointer(t) -> L.pointer_type(ltype_of_typ t)
   in
 
   let printf_t : L.lltype =
@@ -73,6 +101,7 @@ let translate (defs) =
   let printf_func : L.llvalue =
     L.declare_function "printf" printf_t the_module in
 
+<<<<<<< Updated upstream
   (* Declare each C++ function *)
   let add_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_list_t; i32_t |] in
   let add_func : L.llvalue = L.declare_function "add" add_t the_module in
@@ -93,6 +122,20 @@ let translate (defs) =
 
   let sizeofList_t : L.lltype = L.function_type i32_t [| L.pointer_type struct_list_t |] in
   let sizeofList_func : L.llvalue = L.declare_function "sizeofList" sizeofList_t the_module in
+=======
+  (* Declare each C function for List *)
+  let add_t : L.lltype = L.function_type i32_t [|list_t|] in
+  let add_func : L.llvalue = L.declare_function "add" add_t the_module in
+
+  let list_init_t : L.lltype = L.function_type void_t [|list_t|] in
+  let list_init_func : L.llvalue = L.declare_function "list_init" list_init_t the_module in
+  
+  let list_create_t : L.lltype = L.function_type list_t [||] in
+  let list_create_func : L.llvalue = L.declare_function "list_create" list_create_t the_module in
+
+  let list_append_t : L.lltype = L.function_type void_t [|list_t; i32_t|] in
+  let list_append_func : L.llvalue = L.declare_function "list_append" list_append_t the_module in
+>>>>>>> Stashed changes
 
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
@@ -119,12 +162,45 @@ let translate (defs) =
       | A.List -> raise (Failure ("Not implemented yet!")) 
       | A.Void ->  raise (Failure ("Not implemented yet!")) 
       | A.Array(t, len) -> 
+<<<<<<< Updated upstream
         let format =  Array.make len (format_type t) in 
         let result = Array.fold_left (fun a b -> a ^ b ^ ", ") "[" format in
         (String.sub result 0 (String.length result - 2)) ^ "]" in
 
 
     let format_str t = L.build_global_stringptr ((format_type t) ^ "\n") "fmt" builder in
+=======
+          let format =  Array.make len (format_type t) in 
+            let result = Array.fold_left (fun a b -> a ^ b ^ ", ") "[" format in
+              (String.sub result 0 (String.length result - 2)) ^ "]" 
+      | A.Void -> "void"
+      | A.Pointer(t) -> (format_type t) ^ "*"
+      in
+      
+      
+
+    let format_str t = L.build_global_stringptr ((format_type t) ^ "\n") "fmt" builder in
+    
+    (* Construct the function's "locals": formal arguments and locally
+       declared variables.  Allocate each on the stack, initialize their
+       value, if appropriate, and remember their values in the "locals" map *)
+    let local_vars =
+      let add_formal m (t, n) p =
+        L.set_value_name n p;
+        let local = L.build_alloca (ltype_of_typ t) n builder in
+        ignore (L.build_store p local builder);
+        StringMap.add n local m
+
+      (* Allocate space for any locally declared variables and add the
+       * resulting registers to our map *)
+      and add_local m (t, n) =
+        let ty = ltype_of_typ t in
+          let local_var = (match t with  (* Initialize List on creation *)
+            A.List -> L.build_call list_create_func [||] "list_create" builder
+            | _ -> L.build_alloca ty n builder) in
+          StringMap.add n local_var m
+      in
+>>>>>>> Stashed changes
 
     let lookup n local_vars global_vars = try StringMap.find n !local_vars
       with Not_found -> StringMap.find n !global_vars  in
@@ -211,6 +287,7 @@ let translate (defs) =
         L.build_call add_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
           (*Array.of_list (List.map (build_expr builder local_vars global_vars) args)*)
           "add" builder
+<<<<<<< Updated upstream
       | SCall ("get", [(t1, SId s); (t2, e2)]) ->
         L.build_call getList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
           "get" builder
@@ -226,6 +303,11 @@ let translate (defs) =
       | SCall ("size", [(t1, SId s)]) ->
         L.build_call sizeofList_func [| lookup s local_vars global_vars |]
           "sizeofList" builder
+=======
+      | SCall ("list_append", [(t1, e1); (t2, e2)]) ->
+        L.build_call list_append_func [| (build_expr builder (t1, e1));  (build_expr builder (t2, e2))|]
+          "list_append" builder
+>>>>>>> Stashed changes
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
         let llargs = List.rev (List.map (build_expr builder local_vars global_vars) (List.rev args)) in
