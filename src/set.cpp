@@ -5,21 +5,21 @@
 
 extern "C"{
 
-    struct node {
-        struct node *next;
+    struct Node {
+        struct Node *next;
         int val;
     };
 
     struct Set {
-        struct node *head;
-        struct node *tail;
-        struct node *iter;
-        struct node *iter_next;
+        struct Node *head;
+        struct Node *tail;
+        struct Node *iter;
+        struct Node *iter_next;
         int num;
         int num_adts;
     };
 
-    struct Set * set_init(void){
+    struct Set * set_init(){
         struct Set *set;
         set = (struct Set *) malloc(sizeof(struct Set));
 
@@ -34,19 +34,19 @@ extern "C"{
         return set;
     }
 
-    static struct node * node_init(void){
-        struct node *new_node=NULL;
-        new_node = (struct node *) malloc(sizeof(struct node));
+    static struct Node * node_init(void){
+        struct Node *new_node=NULL;
+        new_node = (struct Node *) malloc(sizeof(struct Node));
         new_node->next = NULL;
         return new_node;
     }
 
-    static void node_free(struct node * n){
+    static void node_free(struct Node * n){
         free(n);
         n=NULL;
     }
 
-    struct node * first(struct Set *s){
+    struct Node * first(struct Set *s){
         s->iter = s->head;
         if(s->head){
             s->iter_next = s->head->next;
@@ -54,11 +54,11 @@ extern "C"{
         return s->head;
     }
 
-    struct node * end(struct Set *s){
+    struct Node * end(struct Set *s){
         return s->iter?s->iter:NULL; 
     }
 
-    struct node * next(struct Set *s){
+    struct Node * next(struct Set *s){
         s->iter = s->iter_next;
         if(s->iter_next)
             s->iter_next = s->iter_next->next;
@@ -66,7 +66,7 @@ extern "C"{
     }
 
     int exist(struct Set *s, int i){
-        struct node * n;
+        struct Node * n;
         for(n = first(s); end(s); n = next(s)){
             if(n->val == i){
                 return 1;
@@ -82,7 +82,7 @@ extern "C"{
             return false; 
         }
 
-        struct node * new_node = node_init();
+        struct Node * new_node = node_init();
         s->num += 1;
 
         //add to list
@@ -97,7 +97,7 @@ extern "C"{
     }
 
     bool remove(struct Set * s, int i){
-        struct node *n, *del, *last=NULL;
+        struct Node *n, *del, *last=NULL;
         for(n = first(s); end(s); n = next(s)){            
             if(n->val == i){
                 del=n;
@@ -133,5 +133,9 @@ extern "C"{
             last = n;
         }
         return false;
+    }
+
+    int size(struct Set * s){
+        return s->num;
     }
 }

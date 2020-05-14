@@ -55,6 +55,17 @@ let translate (defs) =
   let _ =
     L.struct_set_body struct_list_t
       [| L.pointer_type struct_listNode_t; L.pointer_type struct_listNode_t; i32_t |] false in
+  
+  let struct_node_t : L.lltype =
+    L.named_struct_type context "Node" in
+  let _ = 
+    L.struct_set_body struct_node_t
+      [| i32_t; L.pointer_type struct_node_t |] false in
+  let struct_set_t : L.lltype = 
+    L.named_struct_type context "Set" in
+  let _ = 
+    L.struct_set_body struct_set_t
+    [| L.pointer_type struct_node_t; L.pointer_type struct_node_t; i32_t |] false in
 
   (* Return the LLVM type for a MicroC type *)
   let rec ltype_of_typ = function
@@ -65,6 +76,7 @@ let translate (defs) =
     | A.String -> string_t
     | A.Array(t, len) -> L.array_type (ltype_of_typ t) len
     | A.List -> struct_list_t
+    | A.Set -> struct_set_t
     | A.Any -> raise (Failure ("Not implemented yet!"))
   in
 
@@ -93,6 +105,24 @@ let translate (defs) =
 
   let sizeofList_t : L.lltype = L.function_type i32_t [| L.pointer_type struct_list_t |] in
   let sizeofList_func : L.llvalue = L.declare_function "sizeofList" sizeofList_t the_module in
+
+
+  let set_add_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_set_t; i32_t |] in
+  let set_add_func : L.llvalue = L.declare_function "add" set_add_t the_module in
+
+  let set_init_t : L.lltype = L.function_type void_t [| L.pointer_type struct_set_t |] in
+  let set_init_func : L.llvalue = L.declare_function "set_init" set_init_t the_module in
+
+  let set_exist_t : L.lltype = L.function_type i32_t [| L.pointer_type struct_set_t; i32_t |] in
+  let set_exist_func : L.llvalue = L.declare_function "exist" exist_set_t the_module in
+
+  let set_remove_func : L.llvalue = L.declare_function "remove" add_t the_module in
+
+  let set_size_t : L.lltype = L.function_type i32_t [| L.pointer_type struct_list_t |] in
+  let set_size_func : L.llvalue = L.declare_function "size" set_size_t the_module in
+  
+
+
 
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
@@ -208,15 +238,24 @@ let translate (defs) =
           L.build_call printf_func [| format_str t; (build_expr builder local_vars global_vars (t, e)) |]
             "printf" builder
       | SCall ("add", [(t1, SId s); (t2, e2)]) ->
-        L.build_call add_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
-          (*Array.of_list (List.map (build_expr builder local_vars global_vars) args)*)
-          "add" builder
+        if t1 = List then
+          L.build_call add_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
+            (*Array.of_list (List.map (build_expr builder local_vars global_vars) args)*)
+            "add" builder
+        if t1 = Set then
+          L.build_call set_add_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
+            (*Array.of_list (List.map (build_expr builder local_vars global_vars) args)*)
+            "add" builder
       | SCall ("get", [(t1, SId s); (t2, e2)]) ->
         L.build_call getList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
           "get" builder
       | SCall ("remove", [(t1, SId s); (t2, e2)]) ->
-        L.build_call removeList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
-          "remove" builder
+        if t1 = List then
+          L.build_call removeList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
+            "remove" builder
+        if t1 = Set then
+          L.build_call set_remove_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
+            "remove" builder
       | SCall ("set", [(t1, SId s); (t2, e2); (t3, e3)]) ->
         L.build_call setList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
           "remove" builder
@@ -224,8 +263,12 @@ let translate (defs) =
         L.build_call insertList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
           "remove" builder
       | SCall ("size", [(t1, SId s)]) ->
-        L.build_call sizeofList_func [| lookup s local_vars global_vars |]
-          "sizeofList" builder
+        if t1 = List then
+          L.build_call sizeofList_func [| lookup s local_vars global_vars |]
+            "sizeofList" builder
+        if t1 = Set then
+          L.build_call set_size_func [| lookup s local_vars global_vars |]
+            "size" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
         let llargs = List.rev (List.map (build_expr builder local_vars global_vars) (List.rev args)) in

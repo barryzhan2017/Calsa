@@ -34,7 +34,7 @@
        if (command "llc -relocation-model=pic llvm.out" != 0)
        then raise (Failure "llc: non-zero exit code")
        else if 
-         ((command "gcc llvm.out.s -L./ -llist -o a.out" )!= 0)
+         ((command "gcc llvm.out.s -L./ -llist -lset -o a.out" )!= 0)
        then raise (Failure "gcc: non-zero exit code")
        else ()
    

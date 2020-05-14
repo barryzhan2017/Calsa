@@ -51,6 +51,7 @@ rule token = parse
 | "void"   { VOID }
 | "string" { STRING }
 | "List"   { LIST }
+| "Set"    { SET } 
 | "true"   { BOOLLIT(true) }
 | "false"  { BOOLLIT(false) }
 | float as lem { FLOATLIT(float_of_string lem) }
