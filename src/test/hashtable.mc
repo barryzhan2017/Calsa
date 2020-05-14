@@ -7,4 +7,6 @@ int main() {
     print(a.get(321));
     a.set(1, 5);
     print(a.get(1));
+
+    print(a);
 }

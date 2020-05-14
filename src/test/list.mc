@@ -6,4 +6,5 @@ int main() {
     a.set(0, 10);
     a.print();
     print(a.size());
+    print(a.sum());
 }

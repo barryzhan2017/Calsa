@@ -98,6 +98,9 @@ let translate (defs) =
   let getList_t : L.lltype = L.function_type i32_t [| L.pointer_type struct_list_t; i32_t |] in
   let getList_func : L.llvalue = L.declare_function "get" getList_t the_module in
 
+  let sumList_t : L.lltype = L.function_type i32_t [| L.pointer_type struct_list_t |] in
+  let sumList_func : L.llvalue = L.declare_function "sumList" sumList_t the_module in
+
   let removeList_func : L.llvalue = L.declare_function "removeList" add_t the_module in
 
   let setList_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_list_t; i32_t; i32_t |] in
@@ -116,6 +119,12 @@ let translate (defs) =
 
   let setHashtable_t : L.lltype = L.function_type void_t [| L.pointer_type struct_hashtable_t; i32_t; i32_t |] in
   let setHashtable_func : L.llvalue = L.declare_function "setKV" setHashtable_t the_module in
+
+  let hasKeyHashtable_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_hashtable_t; i32_t |] in
+  let hasKeyHashtable_func : L.llvalue = L.declare_function "hasKey" hasKeyHashtable_t the_module in
+
+  let printHashtable_t : L.lltype = L.function_type void_t [| L.pointer_type struct_hashtable_t |] in
+  let printHashtable_func : L.llvalue = L.declare_function "printHashtable" printHashtable_t the_module in
 
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
@@ -228,6 +237,11 @@ let translate (defs) =
           | SId s->
             L.build_call printList_func [| lookup s local_vars global_vars |] "" builder
           | _ ->raise (Failure"Print a list using its name")
+        else if t = Hashtable then
+          match e with
+          | SId s ->
+            L.build_call printHashtable_func [| lookup s local_vars global_vars |] "" builder
+          | _ -> raise (Failure "Print hashtable with its name")
         else
           L.build_call printf_func [| format_str t; (build_expr builder local_vars global_vars (t, e)) |]
             "printf" builder
@@ -244,6 +258,8 @@ let translate (defs) =
             "get" builder
         else
           raise (Failure "get used on unsupported type")
+      | SCall ("sum", [(t1, SId s)]) ->
+        L.build_call sumList_func [| lookup s local_vars global_vars |] "sumList" builder
       | SCall ("remove", [(t1, SId s); (t2, e2)]) ->
         L.build_call removeList_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
           "remove" builder
@@ -262,6 +278,9 @@ let translate (defs) =
       | SCall ("size", [(t1, SId s)]) ->
         L.build_call sizeofList_func [| lookup s local_vars global_vars |]
           "sizeofList" builder
+      | SCall ("hasKey", [(t1, SId s)]) -> (* For Hashtable *)
+        L.build_call hasKeyHashtable_func [| lookup s local_vars global_vars |]
+          "hasKey" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
         let llargs = List.rev (List.map (build_expr builder local_vars global_vars) (List.rev args)) in

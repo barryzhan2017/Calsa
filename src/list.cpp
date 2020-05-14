@@ -82,6 +82,26 @@ extern "C"{
         return p->val;
     };
 
+    int sumList(List *l) {
+        int res = 0;
+        ListNode* p = l->head;
+        while (p) {
+            res += p->val;
+            p = p->next;
+        }
+        return res;
+    }
+
+    int maxList(List *l) {
+        int res = INT_MIN;
+        ListNode* p = l->head;
+        while (p) {
+            res = res > p->val ? res : p->val;
+            p = p->next;
+        }
+        return res;
+    }
+
     bool removeList(List* l, int idx){
         if (idx >= l->length){
             return false;
@@ -191,7 +211,7 @@ extern "C" {
             ht->data[i] = NULL;
         }
     }
-    bool existK(struct Hashtable* ht, int key) {
+    bool hasKey(struct Hashtable* ht, int key) {
         int pos = hashFunc(key);
         struct HashtableNode *p = ht->data[pos];
         while (p) {
@@ -219,6 +239,7 @@ extern "C" {
             ht->data[pos] = (struct HashtableNode*) malloc(sizeof(struct HashtableNode));
             ht->data[pos]->value = val;
             ht->data[pos]->key = key;
+            ht->data[pos]->next = NULL;
             ht->size++;
         }
         else {
@@ -241,12 +262,14 @@ extern "C" {
     }
     void printHashtable(struct Hashtable* ht) {
         int i;
+        printf("{");
         for (i = 0; i < TABLE_SIZE; ++i) {
             struct HashtableNode *p = ht->data[i];
-            while (p) {
-                printf("%d->%d ", p->key, p->value);
+            while (p != NULL) {
+                printf("%d->%d, ", p->key, p->value);
                 p = p->next;
             }
         }
+        printf("}\n");
     }
 }
