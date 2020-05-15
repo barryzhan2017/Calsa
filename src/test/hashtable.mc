@@ -7,4 +7,6 @@ int main() {
     }
     print(a);
     print(a.get(25));
+    print(a.hasKey(31231));
+    print(a.hasKey(3));
 }

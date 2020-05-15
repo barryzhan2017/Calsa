@@ -278,8 +278,8 @@ let translate (defs) =
       | SCall ("size", [(t1, SId s)]) ->
         L.build_call sizeofList_func [| lookup s local_vars global_vars |]
           "sizeofList" builder
-      | SCall ("hasKey", [(t1, SId s)]) -> (* For Hashtable *)
-        L.build_call hasKeyHashtable_func [| lookup s local_vars global_vars |]
+      | SCall ("hasKey", [(t1, SId s); (t2, e2)]) -> 
+        L.build_call hasKeyHashtable_func [| lookup s local_vars global_vars; (build_expr builder local_vars global_vars (t2, e2)) |]
           "hasKey" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
