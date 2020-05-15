@@ -1,12 +1,10 @@
 int main() {
     Hashtable a;
-    a.set(1, 2);
-    a.set(321, 5);
-    print(a.get(0));
-    print(a.get(1));
-    print(a.get(321));
-    a.set(1, 5);
-    print(a.get(1));
-
+    int i = 0;
+    while (i < 50) {
+        i = i + 1;
+        a.set(i, 100-2*i);
+    }
     print(a);
+    print(a.get(25));
 }

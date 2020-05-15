@@ -206,6 +206,7 @@ struct Hashtable {
 extern "C" {
     void initHashtable(struct Hashtable *ht) {
         ht->data = (struct HashtableNode**) malloc(TABLE_SIZE * sizeof(struct HashtableNode*));
+        ht->size = 0;
         int i;
         for (i = 0; i < TABLE_SIZE; ++i) {
             ht->data[i] = NULL;
@@ -261,12 +262,18 @@ extern "C" {
         
     }
     void printHashtable(struct Hashtable* ht) {
-        int i;
+        int i, c = 0;
         printf("{");
         for (i = 0; i < TABLE_SIZE; ++i) {
             struct HashtableNode *p = ht->data[i];
             while (p != NULL) {
-                printf("%d->%d, ", p->key, p->value);
+                if (c == ht->size - 1) {
+                    printf("%d: %d", p->key, p->value);
+                }
+                else {
+                    printf("%d: %d, ", p->key, p->value);
+                }
+                c += 1;
                 p = p->next;
             }
         }
