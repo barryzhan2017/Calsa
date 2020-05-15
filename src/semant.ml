@@ -5,7 +5,22 @@ open Sast
 
 module StringMap = Map.Make(String)
 
+
+
+let empty_func_def = {
+  rtyp = Any;
+  fname = "";
+  formals = [];
+  body = [];
+}
 let empty_func t = ({ typ_t = t; formals_t = [] })
+
+let function_to_sfunction typ = match typ with
+    Init(typ, assign) -> raise (Failure ("Formals contain init type")) 
+  | Decl(typ', id) -> (match typ' with 
+      Function ->  Decl(SFunction (empty_func Any), id)
+    | _ -> Decl(typ', id) )
+
 (* Convert the original abstract declaration
    to variable declaration or function declaration
    according to their type *)
@@ -18,10 +33,20 @@ let rec convert (defs, globals, functions) =
     | Ast.FuncDef func_def -> convert (tails, globals , func_def::functions)
 
 (* Add a variable to symbol *)
+(* Add case for function declaration for return type match *)
 let add_symbol m var = 
   match var with
-    Decl (typ, name) ->m:=StringMap.add name typ !m;m
-  | Init(typ, assign) -> m:=StringMap.add (fst assign) typ !m;m
+    Decl (typ, name) ->m:= 
+    if typ = Function then 
+    StringMap.add name (SFunction (empty_func Any)) !m 
+    else StringMap.add name typ !m 
+    ;m
+  | Init(typ, assign) -> m:= 
+    if typ = Function  then (match (snd assign) 
+    with FuncExpr(expr) -> StringMap.add (fst assign) (SFunction (empty_func expr.rtyp)) !m
+    | _ -> raise (Failure ("Function init by none function expression!"))) 
+    else StringMap.add (fst assign) typ !m
+    ;m
 
 (* Return a variable from symbol table *)
 let type_of_identifier s symbols=
@@ -32,6 +57,16 @@ let type_of_identifier s symbols=
 let find_func s funcs =
   try StringMap.find s funcs
   with Not_found -> raise (Failure ("unrecognized function " ^ s))
+ 
+
+(* Find the function in the symbol table firstly and try to find it in declared global functions*)
+let find_func_symbols s symbols funcs =
+  try let typ = StringMap.find s !symbols 
+  in (match typ with
+  SFunction(f) -> empty_func_def
+  |_ -> raise (Failure ("unrecognized function " ^ s)))
+  with Not_found -> find_func s funcs
+
 
 let rec check_array_type v = 
   let h = List.hd v in
@@ -43,9 +78,9 @@ let rec check_array_type v =
     else raise (Failure ("Inconsist Type"))
 
 (* Raise an exception if the given rvalue type cannot be assigned to
-       the given lvalue type *)
+       the given lvalue type. Add cases for print statment and call having function variable*)
 let check_assign lvaluet rvaluet err =
-  if lvaluet = rvaluet || lvaluet = Any then rvaluet else raise (Failure err)
+  if lvaluet = rvaluet || lvaluet = Any || lvaluet = SFunction (empty_func Any) then rvaluet else raise (Failure err)
 
 (* Semantic checking of the AST. Returns an SAST if successful,
    throws an exception if something is wrong.
@@ -56,7 +91,17 @@ let check (defs) =
   in
   let global_symbols = List.fold_left add_symbol (ref StringMap.empty) globals
   in
-
+  (* Convert Function to SFuntion in formals*)
+  let functions' = List.map (fun f -> 
+  let formals' = List.map (fun formal -> (function_to_sfunction formal)) f.formals
+  in
+  ({
+    rtyp = f.rtyp;
+    fname = f.fname;
+    formals = formals';
+    body = f.body;
+  })) functions
+  in
   (* Verify a list of bindings has no duplicate names *)
   let check_duplicates (kind : string) (binds : var_def list) =
     let rec dups = function
@@ -92,7 +137,7 @@ let check (defs) =
   in
 
   (* Collect all function names into one symbol table *)
-  let function_decls = List.fold_left add_func built_in_decls functions
+  let function_decls = List.fold_left add_func built_in_decls functions'
   in
 
   let _ = find_func "main" function_decls in (* Ensure "main" is defined *)
@@ -160,8 +205,13 @@ let check (defs) =
         in
         (t, SBinop((t1, e1'), op, (t2, e2')))
       else raise (Failure err)
-    | Call(fname, args) as call -> 
-      let fd = (find_func fname funcs) in
+      (* If the function call is come from function variable, ignore the prototype checking*)
+    | Call(fname, args) as call -> (
+      let fd = find_func_symbols fname symbols funcs in
+      match fd.rtyp with 
+        Any -> let args' = List.map (check_expr symbols funcs) args in 
+        (fd.rtyp, SCall(fname, args'))
+      | _ ->
       let param_length = List.length fd.formals in
       if List.length args != param_length then
         raise (Failure ("expecting " ^ string_of_int param_length ^
@@ -173,25 +223,31 @@ let check (defs) =
             in (check_assign ft et err, e')
         in
         let args' = List.map2 check_call (List.map Ast.extract_var fd.formals) args
-        in (fd.rtyp, SCall(fname, args'))
+        in (fd.rtyp, SCall(fname, args')))
       (* Fuction expression: Evaluate the function recursively*)
     | FuncExpr fn -> 
-      (SFunction (empty_func Void), SFuncExpr (check_func fn))
+      (SFunction (empty_func Void), SFuncExpr (check_func symbols fn ))
 
+  (* Add: convert function type to sfunction type *)
   and check_var symbols funcs var = 
     match var with
-      Decl(typ, name) -> SDecl(typ, name)
+      Decl(typ, name) -> (match typ with 
+        Function-> SDecl(SFunction (empty_func Any), name)
+      | _ -> SDecl(typ, name))
     | Init(typ, assign) -> let to_sassign = function
           (string, expr) -> (string, (check_expr symbols funcs expr))
-      in let sassign = (to_sassign assign) in SInit(typ, sassign)
-    
-  and check_func func =
+      in let sassign = (to_sassign assign) in 
+      (match typ with 
+        Function-> SInit(SFunction (empty_func Any), sassign)
+      | _ -> SInit(typ, sassign))
+    (*add table to support nested functions' symbols lookup*)
+  and check_func table func  =
     (* Make sure no formals or locals are void or duplicates *)
     check_duplicates "formal" func.formals;
 
     (* Build local symbol table of variables for this function *)
     let symbols = List.fold_left add_symbol
-        (ref StringMap.empty) (globals @ func.formals)
+        table (globals @ func.formals)
     in
 
     let check_bool_expr e =
@@ -217,11 +273,17 @@ let check (defs) =
         SIf(check_bool_expr e, check_stmt symbols st1, check_stmt symbols st2)
       | While(e, st) ->
         SWhile(check_bool_expr e, check_stmt symbols st)
+        (*Add further check if the returned variable is a function variable, we should check the return of the function*)
       | Return e ->
         let (t, e') = check_expr symbols function_decls e in
-        if t = func.rtyp then SReturn (t, e')
+        let t' = match t with 
+          SFunction(f) -> f.typ_t
+          | _ -> t
+        in 
+        (* Add any type case for call expression using a function variable *)
+        if t' = func.rtyp || t' = Any then SReturn (func.rtyp, e')
         else raise (
-            Failure ("return gives " ^ string_of_typ t ^ " expected " ^
+            Failure ("return gives " ^ string_of_typ t' ^ " expected " ^
                      string_of_typ func.rtyp ^ " in " ^ string_of_expr e))
 
 
@@ -234,5 +296,5 @@ let check (defs) =
     }
   in
   let globals = List.map (fun x-> Sast.SVarDef(x)) (List.map (check_var global_symbols function_decls) globals)  in
-  let functions = List.map (fun x->Sast.SFuncDef(x)) (List.map check_func functions) in
+  let functions = List.map (fun x->Sast.SFuncDef(x)) (List.map (check_func (ref StringMap.empty)) functions ) in
   (globals, functions)

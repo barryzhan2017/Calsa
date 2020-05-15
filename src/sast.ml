@@ -19,7 +19,7 @@ and sx =
   | SFuncExpr of sfunc_def
   | SClosure of sclsr_expr
   and sclsr_expr = {
-    ind: int ;
+    ind: int;
     fvs: bind list;
 }
 
@@ -97,8 +97,12 @@ and string_of_sdef = function
   | SFuncDef(sfunc_def) -> string_of_sfdecl sfunc_def
 
 let string_of_sprogram (defs) =
+  let (globals, functions)  = defs
+  in
+  let result = globals@functions 
+  in
   "\n\nParsed program: \n\n" ^
-  String.concat "" (List.map string_of_sdef defs) ^ "\n"
+  String.concat "" (List.map string_of_sdef result) ^ "\n"
 
 let extract_svar = function
     SDecl (typ, string) -> (typ, string)
