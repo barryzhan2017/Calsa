@@ -242,20 +242,6 @@ type lfexpr = {
           ((f'.lname, f') :: named_fncs)
          in
          (checked_global, List.flatten (List.map build_func checked_func))
-         (* let main_func = List.find (fun f -> f.sfname = "main") checked_func
-         in
-         let (fncs, _, _, stmts') = dfs_stmts [] { variables = symbols;
-         parent = None } main_func.sbody in
-         let main_fnc = {
-                 name = "main";
-                 free_vars = [] ;
-                 styp = Int;
-                 sformals = [];
-                 sbody = stmts';
-         } in
-         let named_fncs = List.mapi (fun i fnc -> ("f" ^ string_of_int i, fnc))
-         (List.rev fncs)
-         in (checked_global, ("main", main_fnc) ::  named_fncs) *)
 
 
 

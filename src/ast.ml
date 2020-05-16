@@ -97,7 +97,8 @@ and string_of_typ = function
   | Any -> "any"
   | List -> "list"
   | Function -> "func"
-  | SFunction t -> "sfunc"
+  | SFunction t -> "sfunc (rtype: " ^ (string_of_typ t.typ_t) ^ 
+  ", formals: " ^ String.concat ", " (List.map string_of_typ t.formals_t) ^ ")"
 
 and string_of_vdecl = function
     Decl(t, id) -> string_of_typ t ^ " " ^ id ^ ";\n"

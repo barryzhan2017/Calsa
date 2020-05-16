@@ -13,7 +13,10 @@ let empty_func_def = {
   formals = [];
   body = [];
 }
+
+let to_formals fakes =  List.map extract_svar fakes
 let empty_func t = ({ typ_t = t; formals_t = [] })
+let concrete_func t f = ({ typ_t = t; formals_t = List.map fst (to_formals f) }) 
 
 let function_to_sfunction typ = match typ with
     Init(typ, assign) -> raise (Failure ("Formals contain init type")) 
@@ -91,7 +94,7 @@ let check (defs) =
   in
   let global_symbols = List.fold_left add_symbol (ref StringMap.empty) globals
   in
-  (* Convert Function to SFuntion in formals*)
+  (* Convert Function to SFuntion in formals for symbol table lookup*)
   let functions' = List.map (fun f -> 
   let formals' = List.map (fun formal -> (function_to_sfunction formal)) f.formals
   in
@@ -224,22 +227,30 @@ let check (defs) =
         in
         let args' = List.map2 check_call (List.map Ast.extract_var fd.formals) args
         in (fd.rtyp, SCall(fname, args')))
-      (* Fuction expression: Evaluate the function recursively*)
+      (* Fuction expression: Evaluate the function recursively and give the type by created function expression*)
     | FuncExpr fn -> 
-      (SFunction (empty_func Void), SFuncExpr (check_func symbols fn ))
+      let fuc_expr = check_func symbols fn
+      in 
+      (SFunction (concrete_func fuc_expr.srtyp fuc_expr.sformals), SFuncExpr fuc_expr)
 
   (* Add: convert function type to sfunction type *)
+  (* Add assignment check *)
   and check_var symbols funcs var = 
     match var with
       Decl(typ, name) -> (match typ with 
         Function-> SDecl(SFunction (empty_func Any), name)
       | _ -> SDecl(typ, name))
-    | Init(typ, assign) -> let to_sassign = function
+    | Init(ltyp, assign) -> let to_sassign = function
           (string, expr) -> (string, (check_expr symbols funcs expr))
       in let sassign = (to_sassign assign) in 
-      (match typ with 
-        Function-> SInit(SFunction (empty_func Any), sassign)
-      | _ -> SInit(typ, sassign))
+        let rtyp = fst (snd sassign)
+      in     
+        let err = "illegal initialization " ^ string_of_typ ltyp ^ " = " ^
+      string_of_typ rtyp ^ " in " ^ string_of_expr (snd assign)
+      in
+      (match ltyp with 
+        Function-> SInit(check_assign (SFunction (empty_func Any)) rtyp err, sassign)
+      | _ -> SInit(check_assign ltyp rtyp err, sassign))
     (*add table to support nested functions' symbols lookup*)
   and check_func table func  =
     (* Make sure no formals or locals are void or duplicates *)
