@@ -40,7 +40,21 @@ int main() {
     print(i);
     i = i + 1;
   }
-  
+
+  int e = 20;
+  int f = 24;
+  print(gcd(e, f));
+
+  if (e<f){
+    print(e);
+  }else{
+    print(f);
+  }
+
+
+  float k = 10.0;
+  print(k);
+
   print(gcd(a,b));
   print(1.0);
   print(gcdf(c,d));
