@@ -5,6 +5,8 @@ open Sast
 
 module StringMap = Map.Make(String)
 
+
+
 let empty_func_def = {
   rtyp = Any;
   fname = "";
@@ -12,6 +14,13 @@ let empty_func_def = {
   body = [];
 }
 let empty_func t = ({ typ_t = t; formals_t = [] })
+
+let function_to_sfunction typ = match typ with
+    Init(typ, assign) -> raise (Failure ("Formals contain init type")) 
+  | Decl(typ', id) -> (match typ' with 
+      Function ->  Decl(SFunction (empty_func Any), id)
+    | _ -> Decl(typ', id) )
+
 (* Convert the original abstract declaration
    to variable declaration or function declaration
    according to their type *)
@@ -69,9 +78,9 @@ let rec check_array_type v =
     else raise (Failure ("Inconsist Type"))
 
 (* Raise an exception if the given rvalue type cannot be assigned to
-       the given lvalue type *)
+       the given lvalue type. Add cases for print statment and call having function variable*)
 let check_assign lvaluet rvaluet err =
-  if lvaluet = rvaluet || lvaluet = Any then rvaluet else raise (Failure err)
+  if lvaluet = rvaluet || lvaluet = Any || lvaluet = SFunction (empty_func Any) then rvaluet else raise (Failure err)
 
 (* Semantic checking of the AST. Returns an SAST if successful,
    throws an exception if something is wrong.
@@ -82,7 +91,17 @@ let check (defs) =
   in
   let global_symbols = List.fold_left add_symbol (ref StringMap.empty) globals
   in
-
+  (* Convert Function to SFuntion in formals*)
+  let functions' = List.map (fun f -> 
+  let formals' = List.map (fun formal -> (function_to_sfunction formal)) f.formals
+  in
+  ({
+    rtyp = f.rtyp;
+    fname = f.fname;
+    formals = formals';
+    body = f.body;
+  })) functions
+  in
   (* Verify a list of bindings has no duplicate names *)
   let check_duplicates (kind : string) (binds : var_def list) =
     let rec dups = function
@@ -118,7 +137,7 @@ let check (defs) =
   in
 
   (* Collect all function names into one symbol table *)
-  let function_decls = List.fold_left add_func built_in_decls functions
+  let function_decls = List.fold_left add_func built_in_decls functions'
   in
 
   let _ = find_func "main" function_decls in (* Ensure "main" is defined *)
@@ -186,9 +205,13 @@ let check (defs) =
         in
         (t, SBinop((t1, e1'), op, (t2, e2')))
       else raise (Failure err)
-      (* !!!Problem!!!*)
-    | Call(fname, args) as call -> 
+      (* If the function call is come from function variable, ignore the prototype checking*)
+    | Call(fname, args) as call -> (
       let fd = find_func_symbols fname symbols funcs in
+      match fd.rtyp with 
+        Any -> let args' = List.map (check_expr symbols funcs) args in 
+        (fd.rtyp, SCall(fname, args'))
+      | _ ->
       let param_length = List.length fd.formals in
       if List.length args != param_length then
         raise (Failure ("expecting " ^ string_of_int param_length ^
@@ -200,17 +223,23 @@ let check (defs) =
             in (check_assign ft et err, e')
         in
         let args' = List.map2 check_call (List.map Ast.extract_var fd.formals) args
-        in (fd.rtyp, SCall(fname, args'))
+        in (fd.rtyp, SCall(fname, args')))
       (* Fuction expression: Evaluate the function recursively*)
     | FuncExpr fn -> 
       (SFunction (empty_func Void), SFuncExpr (check_func symbols fn ))
 
+  (* Add: convert function type to sfunction type *)
   and check_var symbols funcs var = 
     match var with
-      Decl(typ, name) -> SDecl(typ, name)
+      Decl(typ, name) -> (match typ with 
+        Function-> SDecl(SFunction (empty_func Any), name)
+      | _ -> SDecl(typ, name))
     | Init(typ, assign) -> let to_sassign = function
           (string, expr) -> (string, (check_expr symbols funcs expr))
-      in let sassign = (to_sassign assign) in SInit(typ, sassign)
+      in let sassign = (to_sassign assign) in 
+      (match typ with 
+        Function-> SInit(SFunction (empty_func Any), sassign)
+      | _ -> SInit(typ, sassign))
     (*add table to support nested functions' symbols lookup*)
   and check_func table func  =
     (* Make sure no formals or locals are void or duplicates *)
@@ -251,7 +280,8 @@ let check (defs) =
           SFunction(f) -> f.typ_t
           | _ -> t
         in 
-        if t' = func.rtyp then SReturn (t', e')
+        (* Add any type case for call expression using a function variable *)
+        if t' = func.rtyp || t' = Any then SReturn (func.rtyp, e')
         else raise (
             Failure ("return gives " ^ string_of_typ t' ^ " expected " ^
                      string_of_typ func.rtyp ^ " in " ^ string_of_expr e))

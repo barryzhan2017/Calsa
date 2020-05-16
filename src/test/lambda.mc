@@ -1,10 +1,14 @@
 int lambda(func f, int a) {
-    return f(a);
+    func b = int c () {
+        return f(a);
+    };
+    return b;
 }
 
 int main() {
-func a = int b(int c) {
-    return c;
-};
-return lambda(a, 1);
+    int k = 1; 
+    func a = int b() {
+        return k;
+    };
+    return lambda(a, 1);
 }

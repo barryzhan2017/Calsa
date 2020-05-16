@@ -3,7 +3,8 @@
  
  module StringMap = Map.Make(String)
 
-
+let f_id = ref (-1)
+let idx = ref (-1)
 
 let extract_svar  = function
   SDecl (typ, s) -> (typ, s)
@@ -18,11 +19,11 @@ let to_formals fakes =  List.map extract_svar fakes
 }
 
 type lfexpr = {
-     name : string;
-     free_vars : bind list;
-     styp : typ;
-     sformals : bind list;
-     sbody : sstmt list;
+     lname : string;
+     lfvs : bind list;
+     ltyp : typ;
+     lformals : bind list;
+     lbody : sstmt list;
  }
 
 
@@ -46,10 +47,6 @@ type lfexpr = {
                              (Failure ("Lambda: undeclared identifier " ^ name))
 
  let rec dfs_stmt fncs env stmt =
-  let () = StringMap.iter (fun x y -> Printf.printf "Current env has %s variable\n" x ) env.variables
-  in
-  let () = ignore (print_endline ("before stmts " ^string_of_sstmt stmt ^ "\n"))
-  in
    let (fncs', fvs', env', stmt') =
      match stmt with
      SBlock(stmts) ->
@@ -162,6 +159,7 @@ type lfexpr = {
               (fncs2, List.concat [fvs1; fvs2], expr' :: rest')
     | [] -> (fncs, [], exprs)
  and build_closure  ?fname fncs env fexpr =
+         f_id := !f_id + 1;
          let add_bind m (t, id) = StringMap.add id t m in
          let vars = List.fold_left add_bind StringMap.empty (to_formals fexpr.sformals) in
          let name = match fname with Some x -> x
@@ -181,16 +179,16 @@ type lfexpr = {
                          parent = Some env } in
          let (fncs', fvs, _, body') = dfs_stmts fncs new_env fexpr.sbody in
          let clsr = {
-            ind = List.length fncs';
+            ind = !f_id;
             fvs = fvs;
-         }
+         } 
          in
          let new_fnc = {
-            name = name;
-            free_vars = fvs;
-            styp = fexpr.srtyp;
-            sformals =  (to_formals fexpr.sformals);
-            sbody = body';
+            lname = name;
+            lfvs = fvs;
+            ltyp = fexpr.srtyp;
+            lformals =  (to_formals fexpr.sformals);
+            lbody = body';
          }
         in
          (new_fnc :: fncs', fvs, (SFunction(func_t), clsr))
@@ -224,9 +222,29 @@ type lfexpr = {
           | SFuncDef(f) -> f.sfname <> "main"
            ) functions@globals) 
          in
-         let main_func = List.find (fun f -> f.sfname = "main") checked_func
+         let build_func f = 
+          let symbols' = List.fold_left (fun m (typ, name) -> StringMap.add name typ m) 
+            symbols (to_formals f.sformals)
+            in
+            let (fncs, _, _, stmts') = dfs_stmts [] { variables = symbols';
+            parent = None } f.sbody
+            in
+              let f' = {
+                lname = f.sfname;
+                lfvs = [] ;
+                ltyp = f.srtyp;
+                lformals = to_formals f.sformals;
+                lbody = stmts';
+              } in  
+              let named_fncs = List.map (fun f -> (idx := !idx + 1; "f" ^ string_of_int !idx, f))
+              (List.rev fncs)
+            in
+          ((f'.lname, f') :: named_fncs)
          in
-         let (fncs, _, _, stmts') = dfs_stmts [] { variables = symbols ;
+         (checked_global, List.flatten (List.map build_func checked_func))
+         (* let main_func = List.find (fun f -> f.sfname = "main") checked_func
+         in
+         let (fncs, _, _, stmts') = dfs_stmts [] { variables = symbols;
          parent = None } main_func.sbody in
          let main_fnc = {
                  name = "main";
@@ -237,7 +255,7 @@ type lfexpr = {
          } in
          let named_fncs = List.mapi (fun i fnc -> ("f" ^ string_of_int i, fnc))
          (List.rev fncs)
-         in (checked_global, ("main", main_fnc) ::  named_fncs)
+         in (checked_global, ("main", main_fnc) ::  named_fncs) *)
 
 
 
@@ -262,7 +280,6 @@ type lfexpr = {
        ) ^ ")"
 and string_of_sassign (string, sexpr) = string ^ " "^ string_of_sexpr sexpr
 and string_of_bind (typ, string) = string_of_typ typ ^ " " ^  string
-(*should use \n?*)
 and string_of_svdecl = function
     SDecl (typ, string) -> string_of_typ typ ^ " " ^ string 
   | SInit (typ, sassign) -> string_of_typ typ ^ " " ^ string_of_sassign sassign 
@@ -277,10 +294,10 @@ and string_of_sstmt = function
   | SLocalVarDef l -> string_of_svdecl l ^ ";\n"
 
 and string_of_sfdecl (name, fdecl) =
-  string_of_typ fdecl.styp ^ " " ^
-  name ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.sformals) ^
-  ") " ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.free_vars) ^ ")" ^ "{\n" ^
-  String.concat "" (List.map string_of_sstmt fdecl.sbody) ^
+  string_of_typ fdecl.ltyp ^ " " ^
+  name ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.lformals) ^
+  ") " ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.lfvs) ^ ") " ^ "{\n" ^
+  String.concat "" (List.map string_of_sstmt fdecl.lbody) ^
   "}\n"
 
   let string_of_lprogram (defs) =
