@@ -3,6 +3,8 @@
  
  module StringMap = Map.Make(String)
 
+
+
 let extract_svar  = function
   SDecl (typ, s) -> (typ, s)
 | SInit(typ, sassign) -> (typ, fst sassign)
@@ -22,6 +24,7 @@ type lfexpr = {
      sformals : bind list;
      sbody : sstmt list;
  }
+
 
  let empty_func t = ({ typ_t = t; formals_t = [] }) 
  let concrete_func t f = ({ typ_t = t; formals_t = List.map fst (to_formals f) }) 
@@ -43,6 +46,10 @@ type lfexpr = {
                              (Failure ("Lambda: undeclared identifier " ^ name))
 
  let rec dfs_stmt fncs env stmt =
+  let () = StringMap.iter (fun x y -> Printf.printf "Current env has %s variable\n" x ) env.variables
+  in
+  let () = ignore (print_endline ("before stmts " ^string_of_sstmt stmt ^ "\n"))
+  in
    let (fncs', fvs', env', stmt') =
      match stmt with
      SBlock(stmts) ->
@@ -62,7 +69,6 @@ type lfexpr = {
                       let init = SInit(new_typ, ((fst sass), e1')) 
                       in
                       (fncs1, fvs1, new_env, SLocalVarDef(init))
-                    (*Should we need this??*)
                   | SDecl (t, s) -> 
                       let new_env = {variables = StringMap.add (s) t env.variables;
                       parent = env.parent} 
@@ -216,7 +222,7 @@ type lfexpr = {
            (StringMap.empty) (List.filter (fun def -> match def with 
            SVarDef(var) -> true
           | SFuncDef(f) -> f.sfname <> "main"
-           ) globals@functions) 
+           ) functions@globals) 
          in
          let main_func = List.find (fun f -> f.sfname = "main") checked_func
          in
@@ -234,8 +240,9 @@ type lfexpr = {
          in (checked_global, ("main", main_fnc) ::  named_fncs)
 
 
+
  (* Pretty-printing function *)
-let rec string_of_sexpr (t, e) =
+ let rec string_of_sexpr (t, e) =
   "(" ^ string_of_typ t ^ " : " ^ (match e with
         SLiteral(l) -> string_of_int l
       | SFloatLit(l) -> string_of_float l
@@ -255,9 +262,10 @@ let rec string_of_sexpr (t, e) =
        ) ^ ")"
 and string_of_sassign (string, sexpr) = string ^ " "^ string_of_sexpr sexpr
 and string_of_bind (typ, string) = string_of_typ typ ^ " " ^  string
+(*should use \n?*)
 and string_of_svdecl = function
-    SDecl (typ, string) -> string_of_typ typ ^ " " ^ string ^ "\n"
-  | SInit (typ, sassign) -> string_of_typ typ ^ " " ^ string_of_sassign sassign ^ "\n"
+    SDecl (typ, string) -> string_of_typ typ ^ " " ^ string 
+  | SInit (typ, sassign) -> string_of_typ typ ^ " " ^ string_of_sassign sassign 
 and string_of_sstmt = function
     SBlock(stmts) ->
     "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
@@ -271,14 +279,11 @@ and string_of_sstmt = function
 and string_of_sfdecl (name, fdecl) =
   string_of_typ fdecl.styp ^ " " ^
   name ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.sformals) ^
-  ")\n" ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.free_vars) ^ ")" ^ "{\n" ^
+  ") " ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.free_vars) ^ ")" ^ "{\n" ^
   String.concat "" (List.map string_of_sstmt fdecl.sbody) ^
   "}\n"
 
-let string_of_lprogram (defs) =
-  "\n\nParsed program: \n\n" ^
-  String.concat "" (List.map string_of_svdecl (fst defs)) ^ "\n"
-  ^ String.concat "" (List.map string_of_sfdecl (snd defs)) ^ "\n"
-
-
-
+  let string_of_lprogram (defs) =
+    "\n\nParsed program: \n\n" ^
+    String.concat "" (List.map string_of_svdecl (fst defs)) ^ "\n"
+    ^ String.concat "" (List.map string_of_sfdecl (snd defs)) ^ "\n"
