@@ -67,7 +67,7 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
     | A.List -> struct_list_t
     | A.SFunction f-> ltype_of_sfunc_t_clsr "" f
     | A.Function -> raise (Failure "Function should be converted to SFunction!")
-    | _ -> raise (Failure (A.string_of_typ typ))
+    | _ -> i32_t
 
   (* llvm type of lfexpr *)
   and ltype_of_lfexpr (name:string) (lfexpr:Lambda.lfexpr) = 
@@ -261,7 +261,7 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
         let fvs_t = List.map ltype_of_typ (List.map fst clsr.fvs) in
         let fvs_ptr_t = List.map L.pointer_type fvs_t in
         let env_strcut_t = L.struct_type context (Array.of_list fvs_ptr_t) in
-        let env_struct = L.build_malloc env_strcut_t "env" builder in
+        let env_struct = L.build_alloca env_strcut_t "env" builder in
         let idx = generate_seq((List.length fvs)-1) in
         let env_value = List.fold_left2 (build_struct builder) (L.const_null env_strcut_t) 
             llfvs idx in 
@@ -269,7 +269,6 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
         let env_struct_ptr = L.build_bitcast env_struct void_ptr_t "env_ptr" builder in
 
         let func_name = "f" ^ string_of_int clsr.ind in
-        let _ = print_endline func_name in 
         let (func, lfexpr) = StringMap.find func_name !function_decls in
         let clsr_struct_t = ltype_of_sfunc_def_clsr func_name lfexpr in 
         let clsr = List.fold_left2 (build_struct builder) (L.const_null clsr_struct_t)
@@ -354,7 +353,7 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
           let func_t = L.pointer_type (ltype_of_lfexpr func_name lfexpr) in 
           let clsr_struct_t = L.struct_type context [|func_t;void_ptr_t|] in 
           L.build_alloca clsr_struct_t n builder in
-        let (_, expr) = e in
+        let (typ, expr) = e in
         let local_var = match expr with
           | SClosure clsr -> alloca_clsr clsr
           | _ -> L.build_alloca (ltype_of_typ t) n builder
