@@ -7,8 +7,5 @@ int lambda(func f, int a) {
 
 int main() {
     int k = 1; 
-    func a = int b() {
-        return k;
-    };
-    return lambda(a, 1);
+    print(lambda(1));
 }
