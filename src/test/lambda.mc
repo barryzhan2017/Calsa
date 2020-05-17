@@ -2,7 +2,7 @@ int lambda(func f, int a) {
     func b = int c () {
         return f(a);
     };
-    return b;
+    return b();
 }
 
 int main() {
