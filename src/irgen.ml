@@ -299,15 +299,15 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
           "remove" builder
       | SCall ("set", [(t1, SId s); (t2, e2); (t3, e3)]) ->
         if t1 = List then
-          L.build_call setList_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
+          L.build_call setList_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)); (build_expr builder m global_vars (t3, e3)) |]
             "remove" builder
         else if t1 = Hashtable then
-          L.build_call setHashtable_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
+          L.build_call setHashtable_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)); (build_expr builder m global_vars (t3, e3)) |]
             "" builder
         else
           raise (Failure "set used on unsupported type")
       | SCall ("insert", [(t1, SId s); (t2, e2); (t3, e3)]) ->
-        L.build_call insertList_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)); (build_expr builder local_vars global_vars (t3, e3)) |]
+        L.build_call insertList_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)); (build_expr builder m global_vars (t3, e3)) |]
           "remove" builder
       | SCall ("size", [(t1, SId s)]) ->
         L.build_call sizeofList_func [| lookup_value m global_vars s |]
