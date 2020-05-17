@@ -37,7 +37,9 @@ type lfexpr = {
 
  let built_in_decls =
      let add_default map (name, ty) = StringMap.add name (SFunction ty) map
-     in List.fold_left add_default StringMap.empty [("print", empty_func Int); ("add", empty_func Bool)]
+     in List.fold_left add_default StringMap.empty [("print", empty_func Int); ("add", empty_func Bool); 
+     ("get", empty_func Int); ("remove", empty_func Bool); ("set", empty_func Bool); ("insert", empty_func Bool); ("size", empty_func Int); ("sum", empty_func Int); 
+     ("hasKey", empty_func Bool)]
 
  (* Look up function: traverse up the tree until
  * we encounter a symbol *)
