@@ -82,8 +82,11 @@ let rec check_array_type v =
 
 (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type. Add cases for print statment and call having function variable*)
+(* Add case for assign a unkonwn function call to a variable, we should use variable's type*)
 let check_assign lvaluet rvaluet err =
-  if lvaluet = rvaluet || lvaluet = Any || lvaluet = SFunction (empty_func Any) then rvaluet else raise (Failure err)
+  if lvaluet = rvaluet || lvaluet = Any || lvaluet = SFunction (empty_func Any) then rvaluet else 
+  (if rvaluet = Any then lvaluet 
+  else raise (Failure err))
 
 (* Semantic checking of the AST. Returns an SAST if successful,
    throws an exception if something is wrong.

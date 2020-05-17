@@ -1,6 +1,6 @@
 int lambda(func f, int a) {
     func b = int c () {
-        return f(a) + 2;
+        return f(a);
     };
     return b();
 }
