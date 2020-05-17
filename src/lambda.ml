@@ -201,7 +201,7 @@ type lfexpr = {
          let (fncs', fvs, _, body', ref_map') = dfs_stmts fncs new_env fexpr.sbody new_ref_map in
          let clsr = {
             ind = !f_id;
-            fvs = fvs;
+            fvs = List.map (find_and_replace ref_map') fvs;
          } 
          in
          let new_fnc = {

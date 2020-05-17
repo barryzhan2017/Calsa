@@ -321,17 +321,14 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
            ignore(List.map print_endline (get_all_keys m)); *)
         if (is_clsr m global_vars f) then 
           (let (typ, lclsr) = lookup m global_vars f in
-           let func_t = match typ with A.SFunction func_t -> func_t
-                                     | _-> raise(Failure"Wrong type for function call!") in
            let clsr_value = L.build_load lclsr "clsr_value" builder in
            (* extract function pointer from lclsr *)
            let func_ptr = L.build_extractvalue clsr_value 0 "func_ptr" builder in
            (* extract environment pointer from lclsr *)
            let env_ptr = L.build_extractvalue clsr_value 1 "env_ptr" builder in
            let llargs = env_ptr :: List.rev (List.map (build_expr builder m global_vars) (List.rev args)) in
-           let result = match func_t.typ_t with
-               A.Void -> ""
-             | _ -> f ^ "_result" in
+           (* let _ = print_endline (string_of_int (List.length llargs)) in *)
+           let result = f ^ "_result" in
            L.build_call func_ptr (Array.of_list llargs) result builder)
         else
           let (fdef, fdecl) = StringMap.find f !function_decls in
@@ -344,6 +341,7 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
         let fvs = List.map snd clsr.fvs in
         (* get values of free variables from local and global variables *)
         let llfvs = List.map (lookup_value m global_vars) fvs in
+        (* let _ = List.map print_endline (List.map A.string_of_typ (List.map fst clsr.fvs)) ins *)
         let fvs_t = List.map ltype_of_typ (List.map fst clsr.fvs) in
         let fvs_ptr_t = List.map L.pointer_type fvs_t in
         let env_strcut_t = L.struct_type context (Array.of_list fvs_ptr_t) in
@@ -382,6 +380,8 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
     let local_vars =
       let add_formal m (t, n) p =
         L.set_value_name n p;
+        (* let _ = print_endline n in 
+        let _ = print_endline (A.string_of_typ t) in *)
         let local = L.build_alloca (ltype_of_typ t) n builder in
         ignore (L.build_store p local builder);
         m:=StringMap.add n (t, local) !m;m
