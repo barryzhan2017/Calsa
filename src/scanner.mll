@@ -54,6 +54,7 @@ rule token = parse
 | "Hashtable" { HASHTABLE }
 | "true"   { BOOLLIT(true) }
 | "false"  { BOOLLIT(false) }
+| "func"    { FUNCTION }
 | float as lem { FLOATLIT(float_of_string lem) }
 | digits as lem  { INTLIT(int_of_string lem) }
 | id as lem { ID(lem) }

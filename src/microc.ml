@@ -24,7 +24,8 @@
      match !action with
        Ast -> print_string (Ast.string_of_program ast)
      | _ -> let sast = Semant.check ast in
-     let llvm_module = Llvm.string_of_llmodule (Irgen.translate sast) in
+     let last = Lambda.lift sast in
+     let llvm_module = Llvm.string_of_llmodule (Irgen.translate last) in
        match !action with
          Ast     -> ()
        | Sast    -> print_string (Sast.string_of_sprogram sast)

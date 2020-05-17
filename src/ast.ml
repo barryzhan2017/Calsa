@@ -2,7 +2,14 @@
 
 type op = Add | Sub | Mul | Div | Mod | Equal | Neq | Less | And | Or
 
-type typ = Int | Void | Float | Bool | String | Array of typ * int | Any | List | Hashtable
+
+type typ = Int | Void | Float | Bool | String | Array of typ * int | Any | List | Function |Hashtable| SFunction of sfunc_t 
+and sfunc_t = {
+    typ_t : typ;
+    formals_t : typ list;
+}
+
+type bind = typ * string
 
 type expr =
     Literal of int
@@ -17,10 +24,11 @@ type expr =
   | ArrayAssign of string * int * expr
   (* function call *)
   | Call of string * expr list
+  | FuncExpr of func_def
 
 and assign = string * expr
 
-type stmt =
+and stmt =
     Block of stmt list
   | Expr of expr
   | If of expr * stmt * stmt
@@ -74,10 +82,11 @@ let rec string_of_expr = function
   | ArrayAssign(v, i, e) -> v ^ "[" ^ (string_of_int i) ^ "]" ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
-and
-string_of_assign (string, expr) = string ^ " "^ string_of_expr expr
+  | FuncExpr(fdef) -> string_of_fdecl fdef
 
-let rec string_of_typ = function
+and string_of_assign (string, expr) = string ^ " "^ string_of_expr expr
+
+and string_of_typ = function
     Int -> "int"
   | Void -> "void"
   | Float -> "float"
@@ -87,12 +96,15 @@ let rec string_of_typ = function
   | Any -> "any"
   | List -> "list"
   | Hashtable -> "hashtable"
+  | Function -> "func"
+  | SFunction t -> "sfunc (rtype: " ^ (string_of_typ t.typ_t) ^ 
+  ", formals: " ^ String.concat ", " (List.map string_of_typ t.formals_t) ^ ")"
 
-let string_of_vdecl = function
+and string_of_vdecl = function
     Decl(t, id) -> string_of_typ t ^ " " ^ id ^ ";\n"
   | Init (t, assign) -> string_of_typ t  ^ " " ^ string_of_assign assign ^ ";\n"
 
-let rec string_of_stmt = function
+and string_of_stmt = function
     Block(stmts) ->
     "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n"
@@ -102,7 +114,7 @@ let rec string_of_stmt = function
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
   | LocalVarDef(l) -> string_of_vdecl l
 
-let string_of_fdecl fdecl =
+and string_of_fdecl fdecl = 
   string_of_typ fdecl.rtyp ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_vdecl fdecl.formals ) ^
   ")\n{\n" ^

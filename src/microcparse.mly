@@ -8,7 +8,7 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE PLUS MINUS MULTIPLY DIVIDE MODULO ASSIGN QUOTATION DOT
 
 %token EQ NEQ LT AND OR
-%token IF ELSE WHILE INT VOID FLOAT BOOL STRING LIST HASHTABLE
+%token IF ELSE WHILE INT VOID FLOAT BOOL STRING LIST HASHTABLE FUNCTION
 /* return, COMMA token */
 %token RETURN COMMA
 %token <int> INTLIT
@@ -59,6 +59,7 @@ typ:
   | typ LBRACKET INTLIT RBRACKET  { Array ($1, $3) }
   | LIST { List }
   | HASHTABLE {Hashtable}
+  | FUNCTION { Function }
 
 /* fdecl */
 fdecl:
@@ -119,6 +120,7 @@ expr:
   | LPAREN expr RPAREN { $2                   }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
+  | fdecl            { FuncExpr($1) }
   /* Function calls like a.sum(), this works by interpreting a.sum(b, c) as sum(a, b, c) */
   | expr DOT ID LPAREN args_opt RPAREN { Call($3, $1::$5) }
 
