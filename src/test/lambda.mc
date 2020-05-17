@@ -1,8 +1,6 @@
-string lambda(int a) {
-    func b = string c () {
-        int o = 3* a + 2;
-        print(o);
-        return "Hello";
+int lambda(func f, int a) {
+    func b = int c () {
+        return f(a);
     };
     return b();
 }
