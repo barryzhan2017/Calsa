@@ -142,6 +142,10 @@ type lfexpr = {
               let check_scope (_, fv) = not (StringMap.mem fv env.variables) in
               let fvs1' = List.filter check_scope fvs1 in
               (fncs1, fvs1', (t, SClosure(clsr)))
+   | SBinop(e1, op , e2) -> 
+              let (fncs1, fvs1, e1') = dfs_expr fncs env e1 in
+              let (fncs1, fvs1, e2') = dfs_expr fncs env e2 in
+              (fncs1, fvs1, (t, SBinop(e1',op, e2')))
    | _ as x  -> (fncs, [], (t, x))
    in
  let check_scope (_, fv) = not (StringMap.mem fv env.variables) in
