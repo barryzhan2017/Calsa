@@ -1,13 +1,18 @@
 int main() {
-    List b;
-    int i = 0;
-    while (i < 10) {
-        b.add(i);
+    List list;
+
+    int i = 1;
+    while (i < 11) {
+        list.add(i);
         i = i + 1;
     }
-    func f = int b(int x, int y) {
+
+    func f = int sum(int x, int y) {
         return x + y;
     };
-    print(b);
-    print(b.foldleft(0, f));
+
+    print("The original list is");
+    print(list);
+    print("The reduced result is");
+    print(list.foldleft(0, f));
 }

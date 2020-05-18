@@ -31,21 +31,23 @@ List filter(List l, func f) {
     }
     return l;
 }
+
 int main() {
-    List a;
-    a.add(1);
-    a.add(20);
-    a.add(30);
-    a.add(4);
-    func f = int b(int x) {
-        if (x < 10) {
-            return 1;
-        }
-        else {
-            return 0;
-        }
+    List list;
+
+    int i = 1;
+    while (i < 11) {
+        list.add(i);
+        i = i + 1;
+    }
+
+    func f = int too_odd (int x) {
+        return 2 * x - 1;
     };
-    print(a);
-    a.filter(f);
-    print(a);
+
+    print("The original list is");
+    print(list);
+    List mapped_list = list.map(f);
+    print("The mapped list is");
+    print(mapped_list);
 }
