@@ -7,7 +7,7 @@ int main() {
     func f = int b(int x) {
         return x + 10;
     };
-    a.print();
-    map(a, f);
-    a.print();
+    print(a);
+    List b = a.map(f);
+    print(b);
 }

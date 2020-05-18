@@ -1,4 +1,4 @@
-int map(List l, func f){
+List map(List l, func f){
     int len = l.size();
     int i = 0;
     while (i < len){
@@ -6,20 +6,28 @@ int map(List l, func f){
         l.set(i, tmp);
         i = i + 1;
     }
-    return 1;
+    return l;
 }
-int main() {
-    Hashset a;
-    Hashset b;
-    Hashset c;
+
+int foldleft(List l, int acc, func f) {
+    int len = l.size();
     int i = 0;
-    while (i < 50) {
+    while (i < len){
+        acc = f(acc, l.get(i));
         i = i + 1;
-        a.set(i, 100-2*i);
-        b.set(i, 100-i);
     }
-    print(a);
-    a.exist(25);
-    a.remove(25);
-    print(a);
+    return acc;
+}
+
+int main() {
+    List a;
+    a.add(1);
+    a.add(2);
+    a.add(3);
+    func f = int b(int x) {
+        return x + 10;
+    };
+    a.print();
+    List b = a.map(f);
+    print(b);
 }
