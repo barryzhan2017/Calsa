@@ -35,9 +35,11 @@ let empty_func t = ({ typ_t = t; formals_t = [] })
 let concrete_func t f = ({ typ_t = t; formals_t = List.map fst (to_formals f) }) 
 let concrete_func2 t f = ({ typ_t = t; formals_t = List.map fst (f) }) 
 
-let built_in_decls =
-  let add_default map (name, ty) = StringMap.add name (SFunction ty) map
-  in List.fold_left add_default StringMap.empty [("print", empty_func Int); ("add", empty_func Bool)]
+ let built_in_decls =
+     let add_default map (name, ty) = StringMap.add name (SFunction ty) map
+     in List.fold_left add_default StringMap.empty [("print", empty_func Int); ("add", empty_func Bool); 
+     ("get", empty_func Int); ("remove", empty_func Bool); ("set", empty_func Bool); ("insert", empty_func Bool); ("size", empty_func Int); ("sum", empty_func Int); 
+     ("hasKey", empty_func Bool)]
 
 (* Look up function: traverse up the tree until
  * we encounter a symbol *)

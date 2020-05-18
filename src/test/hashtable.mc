@@ -9,4 +9,7 @@ int main() {
     print(a.get(25));
     print(a.hasKey(31231));
     print(a.hasKey(3));
+
+    Hashtable b = a;
+    print(b);
 }

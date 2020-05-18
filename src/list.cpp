@@ -280,3 +280,112 @@ extern "C" {
         printf("}\n");
     }
 }
+
+// Definition for set
+struct HashsetNode {
+    int key;
+    struct HashsetNode *next;
+    HashsetNode() {
+        key = 0;
+        next = NULL;
+    }
+};
+struct Hashset {
+    int size;
+    struct HashsetNode **data;
+    Hashset() {
+        data = NULL;
+        size = 0;
+    }
+};
+
+extern "C" {
+    void initHashset(struct Hashset *hs) {
+        hs->data = (struct HashsetNode**) malloc(TABLE_SIZE * sizeof(struct HashsetNode*));
+        hs->size = 0;
+        int i;
+        for (i = 0; i < TABLE_SIZE; ++i) {
+            hs->data[i] = NULL;
+        }
+    }
+    bool existK(struct Hashset* hs, int key) {
+        int pos = hashFunc(key);
+        struct HashsetNode *p = hs->data[pos];
+        while (p) {
+            if (p->key == key) {
+                return true;
+            }
+        }
+        return false;
+    }
+    void setK(struct Hashset* hs, int key) {
+        int pos = hashFunc(key);
+        struct HashsetNode *p = hs->data[pos];
+        while (p) {
+            if (p->key == key) {
+                return;
+            }
+            p = p->next;
+        }
+        struct HashsetNode *temp = (struct HashsetNode*) malloc(sizeof(struct HashsetNode));
+        temp->key = key;
+        temp->next = hs->data[pos];
+        hs->data[pos] = temp;
+        hs->size++;
+    }
+    bool removeK(struct Hashset* hs, int key) {
+        int pos = hashFunc(key);
+        if (hs->data[pos] && hs->data[pos]->key == key) {
+            hs->data[pos] = hs->data[pos]->next;
+            free(hs->data[pos]);
+            hs->size--;
+            return true;
+        }
+        struct HashsetNode *prev, *curr = hs->data[pos];
+        while (curr) {
+            if (curr->key == key) {
+                prev->next = curr->next;
+                free(curr);
+                hs->size--;
+                return true;
+            }
+            prev = curr;
+            curr = curr->next;
+        }
+        return false;
+    }
+    void printHashset(struct Hashset* hs) {
+        int i, c = 0;
+        printf("{");
+        for (i = 0; i < TABLE_SIZE; ++i) {
+            struct HashsetNode *p = hs->data[i];
+            while (p != NULL) {
+                if (c == hs->size - 1) {
+                    printf("%d", p->key);
+                }
+                else {
+                    printf("%d, ", p->key);
+                }
+                c += 1;
+                p = p->next;
+            }
+        }
+        printf("}\n");
+    }
+    struct Hashset* unionHashset(struct Hashset* a, struct Hashset* b) {
+        struct Hashset* c = (struct Hashset*) malloc(sizeof(struct Hashset*));
+        initHashset(c);
+        int i;
+        for (i = 0; i < TABLE_SIZE; ++i) {
+            struct HashsetNode *p = a->data[i];
+            while (p != NULL) {
+                setK(c, p->key);
+            }
+            p = b->data[i];
+            while (p != NULL) {
+                setK(c, p->key);
+            }
+        }
+        return c;
+    }
+}

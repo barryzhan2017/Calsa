@@ -429,6 +429,7 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
           (
             match t with
             | A.List -> L.build_call initList_func [| local_var |] "" builder;
+            | A.Hashtable -> L.build_call initHashtable_func [| local_var |] "" builder;
             | _ -> local_var
           )
         in m:=StringMap.add n (t, local_var) !m
