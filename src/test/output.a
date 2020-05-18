@@ -18,20 +18,34 @@ int foldleft(List l, int acc, func f) {
     }
     return acc;
 }
-int main() {
-    Hashtable a;
-    int i = 0;
-    while (i < 50) {
-        i = i + 1;
-        a.set(i, 100-2*i);
-    }
-    print(a);
-    print(a.get(25));
-    print(a.hasKey(31231));
-    print(a.hasKey(3));
-    a.remove(2);
-    print(a);
 
-    Hashtable b = a;
-    print(b);
+List filter(List l, func f) {
+    int i = l.size();
+    while (0 < i){
+        int temp = f(l.get(i-1));
+        if (temp < 1) {
+            l.remove(i-1);
+        }
+        else {}
+        i = i - 1;
+    }
+    return l;
+}
+int main() {
+    List a;
+    a.add(1);
+    a.add(20);
+    a.add(30);
+    a.add(4);
+    func f = int b(int x) {
+        if (x < 10) {
+            return 1;
+        }
+        else {
+            return 0;
+        }
+    };
+    print(a);
+    a.filter(f);
+    print(a);
 }

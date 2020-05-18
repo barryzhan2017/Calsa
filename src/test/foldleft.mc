@@ -5,9 +5,9 @@ int main() {
         b.add(i);
         i = i + 1;
     }
-    func l = int b(int x, int y) {
+    func f = int b(int x, int y) {
         return x + y;
     };
     print(b);
-    print(b.foldleft(0, l));
+    print(b.foldleft(0, f));
 }

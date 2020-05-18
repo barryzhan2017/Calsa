@@ -110,25 +110,25 @@ extern "C"{
         if (idx == 0){
             tmp = l->head;
             l->head = l->head->next;
+            l->length--;
+            return true;
         }
         else{
             int i = 0;
-            ListNode* p = l->head;
-            while (p && i < idx - 1){
-                p = p->next;
+            struct ListNode *prev, *curr = l->head;
+            while (curr){
+                if (i == idx) {
+                    prev->next = curr->next;
+                    free(curr);
+                    l->length--;
+                    return true;
+                }
+                prev = curr;
+                curr = curr->next;
                 i++;
             }
-            if (p->next->next){
-                tmp = p->next;
-                p->next = p->next->next;
-            } else{
-                tmp = p;
-                p->next = NULL;
-            }
         }
-        free(tmp);
-        l->length--;
-        return true;
+        return false;
     };
 
     bool set(List* l, int idx, int val){

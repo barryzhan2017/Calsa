@@ -1,4 +1,5 @@
 int main() {
+    int[6] a;
     Hashtable a;
     int i = 0;
     while (i < 50) {

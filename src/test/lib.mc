@@ -18,3 +18,16 @@ int foldleft(List l, int acc, func f) {
     }
     return acc;
 }
+
+List filter(List l, func f) {
+    int i = l.size();
+    while (0 < i){
+        int temp = f(l.get(i-1));
+        if (temp < 1) {
+            l.remove(i-1);
+        }
+        else {}
+        i = i - 1;
+    }
+    return l;
+}
