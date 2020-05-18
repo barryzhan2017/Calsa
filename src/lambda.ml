@@ -137,6 +137,7 @@ type lfexpr = {
               in (fncs1, fvs', (t, SCall(s1, exprs')), ref_map')
    | SAssign(s1, e1) ->
               let (fncs1, fvs1, e1', ref_map') = dfs_expr fncs env e1 ref_map in
+
               (fncs1, fvs1, (t, SAssign(s1, e1')), ref_map')
    | SArrayAssign(s1, idx, e1) -> 
               let (fncs1, fvs1, e1', ref_map') = dfs_expr fncs env e1 ref_map in
