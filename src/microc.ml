@@ -7,6 +7,28 @@
    type action = Ast | Sast | LLVM_IR | Exec
    
    let () =
+     let lines = ref [] in
+     let libchannel = open_in "./test/lib.mc" in
+     try
+        while true; do
+          lines := input_line libchannel :: !lines
+        done;
+     with End_of_file -> 
+        close_in libchannel;
+     
+     let prochannel = open_in Sys.argv.((Array.length Sys.argv) - 1) in
+     try
+        while true; do
+          lines := input_line prochannel :: !lines
+        done;
+     with End_of_file -> 
+        close_in prochannel;
+     
+     let outchannel = open_out "./test/output.a" 
+     and cnt = List.rev !lines in
+     List.iter (fun s -> fprintf outchannel "%s\n" s) cnt;
+     close_out outchannel;
+
      let action = ref Exec in
      let set_action a () = action := a in
      let speclist = [
@@ -16,7 +38,7 @@
      ] in
      let usage_msg = "usage: ./microc.native [-a|-s|-l] [file.mc]" in
      let channel = ref stdin in
-     Arg.parse speclist (fun filename -> channel := open_in filename) usage_msg;
+     Arg.parse speclist (fun filename -> channel := open_in "./test/output.a") usage_msg;
    
      let lexbuf = Lexing.from_channel !channel in
    
