@@ -160,6 +160,9 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
   let setHashtable_t : L.lltype = L.function_type void_t [| L.pointer_type struct_hashtable_t; i32_t; i32_t |] in
   let setHashtable_func : L.llvalue = L.declare_function "setKV" setHashtable_t the_module in
 
+  let removeHashtable_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_hashtable_t; i32_t |] in
+  let removeHashtable_func : L.llvalue = L.declare_function "removeKV" removeHashtable_t the_module in
+
   let hasKeyHashtable_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_hashtable_t; i32_t |] in
   let hasKeyHashtable_func : L.llvalue = L.declare_function "hasKey" hasKeyHashtable_t the_module in
 
@@ -340,6 +343,9 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
       | SCall ("remove", [(t1, SId s); (t2, e2)]) ->
         if t1 = List then
           L.build_call removeList_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
+            "remove" builder
+        else if t1 = Hashtable then
+          L.build_call removeHashtable_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
             "remove" builder
         else if t1 = Hashset then
           L.build_call removeHashset_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]

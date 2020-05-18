@@ -259,7 +259,27 @@ extern "C" {
             ht->data[pos]->next = node;
             ht->size++;
         }
-        
+    }
+    bool removeKV(struct Hashtable* ht, int key) {
+        int pos = hashFunc(key);
+        if (ht->data[pos] && ht->data[pos]->key == key) {
+            ht->data[pos] = ht->data[pos]->next;
+            free(ht->data[pos]);
+            ht->size--;
+            return true;
+        }
+        struct HashtableNode *prev, *curr = ht->data[pos];
+        while (curr) {
+            if (curr->key == key) {
+                prev->next = curr->next;
+                free(curr);
+                ht->size--;
+                return true;
+            }
+            prev = curr;
+            curr = curr->next;
+        }
+        return false;
     }
     void printHashtable(struct Hashtable* ht) {
         int i, c = 0;
