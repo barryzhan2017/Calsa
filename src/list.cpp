@@ -30,9 +30,6 @@ extern "C"{
         tmp->head = NULL;
         tmp->tail = NULL;
         tmp->length = 0;
-        l->length = 0;
-        l->head = 0;
-        l->tail = 0;
         l = tmp;
     };
 
@@ -122,9 +119,6 @@ extern "C"{
             while (curr){
                 if (i == idx) {
                     prev->next = curr->next;
-                    if (curr == l->tail) {
-                        l->tail = prev;
-                    }
                     free(curr);
                     l->length--;
                     return true;
