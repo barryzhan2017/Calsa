@@ -380,10 +380,12 @@ extern "C" {
             struct HashsetNode *p = a->data[i];
             while (p != NULL) {
                 setK(c, p->key);
+                p = p->next;
             }
             p = b->data[i];
             while (p != NULL) {
                 setK(c, p->key);
+                p = p->next;
             }
         }
         return c;

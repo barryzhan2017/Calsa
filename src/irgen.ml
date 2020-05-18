@@ -69,6 +69,17 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
     L.struct_set_body struct_hashtable_t
       [| i32_t; L.pointer_type (L.pointer_type struct_hashtableNode_t) |] false in
 
+  let struct_hashsetNode_t : L.lltype = 
+    L.named_struct_type context "HashsetNode" in
+  let _ = 
+    L.struct_set_body struct_hashsetNode_t
+      [| i32_t; i32_t; L.pointer_type struct_hashsetNode_t |] false in
+  let struct_hashset_t : L.lltype = 
+    L.named_struct_type context "Hashset" in
+  let _ =
+    L.struct_set_body struct_hashset_t
+      [| i32_t; L.pointer_type (L.pointer_type struct_hashsetNode_t) |] false in
+
   (* Return the LLVM type for a MicroC type *)
   let rec ltype_of_typ typ = 
     match typ with
@@ -80,6 +91,7 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
     | A.Array(t, len) -> L.array_type (ltype_of_typ t) len
     | A.List -> struct_list_t
     | A.Hashtable -> struct_hashtable_t
+    | A.Hashset -> struct_hashset_t
     | A.SFunction f-> ltype_of_sfunc_t_clsr "" f
     | A.Function -> raise (Failure "Function should be converted to SFunction!")
     | A.Any -> i32_t
@@ -154,6 +166,25 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
   let printHashtable_t : L.lltype = L.function_type void_t [| L.pointer_type struct_hashtable_t |] in
   let printHashtable_func : L.llvalue = L.declare_function "printHashtable" printHashtable_t the_module in
 
+  (* C++ function for hashset *)
+  let initHashset_t : L.lltype = L.function_type void_t [| L.pointer_type struct_hashset_t |] in
+  let initHashset_func : L.llvalue = L.declare_function "initHashset" initHashset_t the_module in
+
+  let existHashset_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_hashset_t; i32_t |] in
+  let existHashset_func : L.llvalue = L.declare_function "existK" existHashset_t the_module in
+
+  let setHashset_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_hashset_t; i32_t; i32_t |] in
+  let setHashset_func : L.llvalue = L.declare_function "setK" setHashset_t the_module in
+
+  let removeHashset_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_hashset_t; i32_t |] in
+  let removeHashset_func : L.llvalue = L.declare_function "removeK" removeHashset_t the_module in
+
+  let printHashset_t : L.lltype = L.function_type void_t [| L.pointer_type struct_hashset_t |] in
+  let printHashset_func : L.llvalue = L.declare_function "printHashset" printHashset_t the_module in
+
+  let unionHashset_t : L.lltype = L.function_type (L.pointer_type struct_hashset_t) [| L.pointer_type struct_hashset_t; L.pointer_type struct_hashset_t |] in
+  let unionHashset_func : L.llvalue = L.declare_function "unionHashset" unionHashset_t the_module in
+
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
   let function_decls : (L.llvalue * lfexpr) StringMap.t ref =
@@ -175,6 +206,7 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
       | A.Any -> raise (Failure ("Not implemented yet!"))
       | A.List -> raise (Failure ("Not implemented yet!")) 
       | A.Hashtable -> raise (Failure ("Not implemented yet!")) 
+      | A.Hashset -> raise (Failure ("Not implemented yet!")) 
       | A.Void ->  raise (Failure ("Not implemented yet!")) 
       | A.Array(t, len) -> 
         let format =  Array.make len (format_type t) in 
@@ -276,6 +308,11 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
           | SId s ->
             L.build_call printHashtable_func [| lookup_value m global_vars s |] "" builder
           | _ -> raise (Failure "Print hashtable with its name")
+        else if t = Hashset then
+          match e with
+          | SId s ->
+            L.build_call printHashset_func [| lookup_value m global_vars s |] "" builder
+          | _ -> raise (Failure "Print hashset with its name")
         else
           L.build_call printf_func [| format_str t; (build_expr builder m global_vars (t, e)) |]
             "printf" builder
@@ -295,14 +332,23 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
       | SCall ("sum", [(t1, SId s)]) ->
         L.build_call sumList_func [| lookup_value m global_vars s |] "sumList" builder
       | SCall ("remove", [(t1, SId s); (t2, e2)]) ->
-        L.build_call removeList_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
-          "remove" builder
+        if t1 = List then
+          L.build_call removeList_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
+            "remove" builder
+        else if t1 = Hashset then
+          L.build_call removeHashset_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
+            "remove" builder
+        else
+          raise (Failure "remove used on unsupported type")
       | SCall ("set", [(t1, SId s); (t2, e2); (t3, e3)]) ->
         if t1 = List then
           L.build_call setList_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)); (build_expr builder m global_vars (t3, e3)) |]
             "remove" builder
         else if t1 = Hashtable then
           L.build_call setHashtable_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)); (build_expr builder m global_vars (t3, e3)) |]
+            "" builder
+        else if t1 = Hashset then
+          L.build_call setHashset_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)); (build_expr builder m global_vars (t3, e3)) |]
             "" builder
         else
           raise (Failure "set used on unsupported type")
@@ -315,7 +361,12 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
       | SCall ("hasKey", [(t1, SId s); (t2, e2)]) -> 
         L.build_call hasKeyHashtable_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
           "hasKey" builder
- 
+      | SCall ("exist", [(t1, SId s); (t2, e2)]) ->
+        L.build_call existHashset_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
+          "exist" builder
+      | SCall ("union", [(t1, SId s); (t2, e2)]) ->
+        L.build_call unionHashset_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
+          "union" builder
       | SCall (f, args) -> 
         (* let get_all_keys m = StringMap.fold (fun k v list->k::list) !m [] in 
            ignore(List.map print_endline (get_all_keys m)); *)
@@ -430,6 +481,7 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
             match t with
             | A.List -> L.build_call initList_func [| local_var |] "" builder;
             | A.Hashtable -> L.build_call initHashtable_func [| local_var |] "" builder;
+            | A.Hashset -> L.build_call initHashset_func [| local_var |] "" builder;
             | _ -> local_var
           )
         in m:=StringMap.add n (t, local_var) !m

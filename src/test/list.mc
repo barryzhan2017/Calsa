@@ -1,3 +1,4 @@
+
 int main() {
     List a;
     a.add(1);
@@ -7,6 +8,6 @@ int main() {
         return x + 10;
     };
     a.print();
-    a.map(f);
+    map(a, f);
     a.print();
 }

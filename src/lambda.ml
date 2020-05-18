@@ -39,7 +39,7 @@ let concrete_func2 t f = ({ typ_t = t; formals_t = List.map fst (f) })
      let add_default map (name, ty) = StringMap.add name (SFunction ty) map
      in List.fold_left add_default StringMap.empty [("print", empty_func Int); ("add", empty_func Bool); 
      ("get", empty_func Int); ("remove", empty_func Bool); ("set", empty_func Bool); ("insert", empty_func Bool); ("size", empty_func Int); ("sum", empty_func Int); 
-     ("hasKey", empty_func Bool)]
+     ("hasKey", empty_func Bool); ("exist", empty_func Bool); ("union", empty_func Hashset)]
 
 (* Look up function: traverse up the tree until
  * we encounter a symbol *)

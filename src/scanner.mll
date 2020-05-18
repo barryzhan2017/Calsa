@@ -52,6 +52,7 @@ rule token = parse
 | "string" { STRING }
 | "List"   { LIST }
 | "Hashtable" { HASHTABLE }
+| "Hashset" {HASHSET}
 | "true"   { BOOLLIT(true) }
 | "false"  { BOOLLIT(false) }
 | "func"    { FUNCTION }

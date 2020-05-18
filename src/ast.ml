@@ -3,7 +3,7 @@
 type op = Add | Sub | Mul | Div | Mod | Equal | Neq | Less | And | Or
 
 
-type typ = Int | Void | Float | Bool | String | Array of typ * int | Any | List | Function |Hashtable| SFunction of sfunc_t 
+type typ = Int | Void | Float | Bool | String | Array of typ * int | Any | List | Function |Hashtable| Hashset | SFunction of sfunc_t 
 and sfunc_t = {
     typ_t : typ;
     formals_t : typ list;
@@ -96,6 +96,7 @@ and string_of_typ = function
   | Any -> "any"
   | List -> "list"
   | Hashtable -> "hashtable"
+  | Hashset -> "hashset"
   | Function -> "func"
   | SFunction t -> "sfunc (rtype: " ^ (string_of_typ t.typ_t) ^ 
   ", formals: " ^ String.concat ", " (List.map string_of_typ t.formals_t) ^ ")"
