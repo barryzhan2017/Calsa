@@ -13,7 +13,7 @@ int foldleft(List l, int acc, func f) {
     int len = l.size();
     int i = 0;
     while (i < len){
-        acc = f(l.get(i), acc);
+        acc = f(acc, l.get(i));
         i = i + 1;
     }
     return acc;
