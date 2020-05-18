@@ -1,3 +1,4 @@
+
 int main() {
     List list;
 
@@ -7,12 +8,13 @@ int main() {
         i = i + 1;
     }
 
-    func f = int sum(int x, int y) {
-        return x + y;
+    func f = int too_odd (int x) {
+        return 2 * x - 1;
     };
 
     print("The original list is");
     print(list);
-    print("The reduced result is");
-    print(list.foldleft(0, f));
+    List mapped_list = list.map(f);
+    print("The mapped list is");
+    print(mapped_list);
 }
