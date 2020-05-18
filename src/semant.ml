@@ -130,7 +130,7 @@ let check (defs) =
         body = [] } map
     in List.fold_left add_bind StringMap.empty 
       [("print", [Any], Int); 
-      ("add", [List; Int], Bool); ("get", [Any; Int], Int); ("remove", [Any; Int], Bool); ("set", [Any; Int; Int], Bool); ("insert", [List; Int; Int], Bool); ("size", [Any], Int); ("sum", [List], Int); 
+      ("add", [Any; Int], Any); ("get", [Any; Int], Int); ("remove", [Any; Int], Bool); ("set", [Any; Int; Int], Bool); ("insert", [List; Int; Int], Bool); ("size", [Any], Int); ("sum", [List], Int); 
       ("hasKey", [Hashtable; Int], Bool); ("union", [Hashset; Hashset], Hashset); ("exist", [Hashset; Int], Bool)] in
 
   (* Add function name to symbol table *)

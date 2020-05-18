@@ -5,8 +5,8 @@ int main() {
     int i = 0;
     while (i < 50) {
         i = i + 1;
-        a.set(i, 100-2*i);
-        b.set(i, 100-i);
+        a.add(i);
+        b.add(i);
     }
     print(a);
     a.exist(25);

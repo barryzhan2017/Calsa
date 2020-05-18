@@ -173,7 +173,7 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
   let existHashset_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_hashset_t; i32_t |] in
   let existHashset_func : L.llvalue = L.declare_function "existK" existHashset_t the_module in
 
-  let setHashset_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_hashset_t; i32_t; i32_t |] in
+  let setHashset_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_hashset_t; i32_t|] in
   let setHashset_func : L.llvalue = L.declare_function "setK" setHashset_t the_module in
 
   let removeHashset_t : L.lltype = L.function_type i1_t [| L.pointer_type struct_hashset_t; i32_t |] in
@@ -317,9 +317,15 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
           L.build_call printf_func [| format_str t; (build_expr builder m global_vars (t, e)) |]
             "printf" builder
       | SCall ("add", [(t1, SId s); (t2, e2)]) ->
-        L.build_call add_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
-          (*Array.of_list (List.map (build_expr builder local_vars global_vars) args)*)
-          "add" builder
+        if t1 = List then
+          L.build_call add_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
+            (*Array.of_list (List.map (build_expr builder local_vars global_vars) args)*)
+            "add" builder
+        else if t1 = Hashset then
+          L.build_call setHashset_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
+            "" builder
+        else
+          raise (Failure "add used on unsupported type")
       | SCall ("get", [(t1, SId s); (t2, e2)]) ->
         if t1 = List then
           L.build_call getList_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)) |]
@@ -346,9 +352,6 @@ let translate (globals, functions: Sast.svar_def list * (string * Lambda.lfexpr)
             "remove" builder
         else if t1 = Hashtable then
           L.build_call setHashtable_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)); (build_expr builder m global_vars (t3, e3)) |]
-            "" builder
-        else if t1 = Hashset then
-          L.build_call setHashset_func [| lookup_value m global_vars s; (build_expr builder m global_vars (t2, e2)); (build_expr builder m global_vars (t3, e3)) |]
             "" builder
         else
           raise (Failure "set used on unsupported type")
